@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Node
+node_modules/
+.npm
+
+# IDE
+.vscode/
+.idea/
+
+# Temp files
+*.tmp
+*.temp
+.DS_Store
+
+# Large files - exclude .pth files except in specific folders
+*.pth
+
+# Include only specific model files
+!models/*.pth
+!backend/saved_models/*.pth
+
+# Checkpoints (too large)
+checkpoints/
+
+# Output folders
+outputs/
+backend/outputs/
+backend/temp/
+
+# Data files (large)
+data/
+
+# Legacy code
+_legacy/
+
+# Other
+*.log
+.env

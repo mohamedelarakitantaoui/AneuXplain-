@@ -1,0 +1,18 @@
+# Backend Dependencies
+# Install with: pip install -r requirements.txt
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# ML/Deep Learning
+torch>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0  # For spatial calculations (KDTree)
+
+# 3D Mesh Processing
+trimesh>=4.0.0
+
+# API
+python-multipart>=0.0.6  # For file uploads
+pydantic>=2.0.0
