@@ -60,7 +60,7 @@ def prepare_labels():
         {
             'name': 'complete',
             'folder': PROJECT_ROOT / "IntrA" / "complete",
-            'base_score': 0.3,  # Complete arteries are mostly healthy
+            'base_score': 0.7,  # IntrA complete arteries contain aneurysms (high risk)
         },
         {
             'name': 'vessel',
