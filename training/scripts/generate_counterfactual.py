@@ -22,6 +22,7 @@ import torch
 import torch.optim as optim
 import trimesh
 import matplotlib.pyplot as plt
+from scipy.spatial import cKDTree
 
 from training.models import RiskPredictor
 
@@ -105,14 +106,24 @@ def generate_counterfactual(config: dict):
     if initial_risk < 0.5:
         print("⚠️  This artery is already low-risk!")
     
+    # Build Laplacian neighbors for smoothing
+    k_neighbors = 8
+    tree = cKDTree(original_points)
+    _, neighbor_indices = tree.query(original_points, k=k_neighbors + 1)
+    neighbor_indices = neighbor_indices[:, 1:]  # Remove self
+    neighbor_indices_tensor = torch.tensor(neighbor_indices, dtype=torch.long, device=device)
+    
     # Setup optimization
     points_delta = torch.zeros_like(original_tensor, requires_grad=True)
     optimizer = optim.Adam([points_delta], lr=config['learning_rate'])
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config['num_steps'])
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config['num_steps'], eta_min=1e-5)
     
-    # Optimization loop
+    # Optimization loop with dynamic weight schedule
     print("\nOptimizing...")
     print("-" * 60)
+    
+    lambda_smooth = config.get('lambda_smooth', 0.1)
+    lambda_inward = config.get('lambda_inward', 0.3)
     
     history = {'risk': [], 'movement': []}
     best_risk = initial_risk
@@ -121,25 +132,49 @@ def generate_counterfactual(config: dict):
     for step in range(1, config['num_steps'] + 1):
         optimizer.zero_grad()
         
+        # Dynamic lambda schedule (matches engine.py)
+        if step <= 150:
+            lambda_dist = 0.0   # Phase 1: free deformation
+        elif step <= 300:
+            lambda_dist = 0.5   # Phase 2: gentle constraint
+        else:
+            lambda_dist = 2.0   # Phase 3: tighten up
+        
         current_points = original_tensor + points_delta
-        current_points = torch.clamp(current_points, -1.5, 1.5)
         
-        # Losses
+        # Loss 1: Risk score (primary objective)
         risk_score = risk_predictor(current_points)
-        risk_loss = risk_score.squeeze()
+        loss_risk = risk_score.squeeze()
         
-        movement = torch.mean(points_delta ** 2)
-        distance_loss = config['lambda_distance'] * movement
+        # Loss 2: Distance regularization (dynamic weight)
+        movement_sq = torch.mean(points_delta ** 2)
+        loss_distance = lambda_dist * movement_sq
         
-        total_loss = risk_loss + distance_loss
+        # Loss 3: Laplacian smoothing (prevents crumpled geometry)
+        delta_transposed = points_delta.squeeze(0).transpose(0, 1)  # (N, 3)
+        neighbor_deltas = delta_transposed[neighbor_indices_tensor]  # (N, k, 3)
+        neighbor_avg = torch.mean(neighbor_deltas, dim=1)            # (N, 3)
+        laplacian = delta_transposed - neighbor_avg                  # (N, 3)
+        loss_smooth = lambda_smooth * torch.mean(laplacian ** 2)
+        
+        # Loss 4: Inward bias (promotes aneurysm deflation)
+        centroid = torch.mean(original_tensor, dim=2, keepdim=True)
+        radial_vec = original_tensor - centroid
+        radial_norm = torch.norm(radial_vec, dim=1, keepdim=True) + 1e-8
+        radial_unit = radial_vec / radial_norm
+        radial_movement = torch.sum(points_delta * radial_unit, dim=1)
+        loss_inward = lambda_inward * torch.mean(torch.relu(radial_movement) ** 2)
+        
+        total_loss = loss_risk + loss_distance + loss_smooth + loss_inward
         total_loss.backward()
         
-        torch.nn.utils.clip_grad_norm_([points_delta], max_norm=1.0)
+        max_grad_norm = 5.0 if step <= 150 else 2.0
+        torch.nn.utils.clip_grad_norm_([points_delta], max_norm=max_grad_norm)
         optimizer.step()
         scheduler.step()
         
         current_risk = risk_score.item()
-        current_movement = torch.sqrt(movement).item()
+        current_movement = torch.sqrt(movement_sq).item()
         
         history['risk'].append(current_risk)
         history['movement'].append(current_movement)
@@ -152,7 +187,7 @@ def generate_counterfactual(config: dict):
             status = ""
         
         if step % 20 == 0 or step == 1:
-            print(f"Step {step:4d} | Risk: {current_risk:.4f} | Move: {current_movement:.4f} | {status}")
+            print(f"Step {step:4d} | Risk: {current_risk:.4f} | Move: {current_movement:.4f} | λ_d: {lambda_dist} | {status}")
         
         if current_risk < config['target_risk']:
             print(f"\n🎉 Target risk {config['target_risk']} reached!")
@@ -229,9 +264,10 @@ if __name__ == "__main__":
         'output_dir': args.output,
         'num_points': 2048,
         'latent_dim': 128,
-        'learning_rate': 0.005,
+        'learning_rate': 0.015,
         'num_steps': args.steps,
-        'lambda_distance': 50.0,
+        'lambda_smooth': 0.1,
+        'lambda_inward': 0.3,
         'target_risk': args.target,
     }
     
