@@ -10,6 +10,7 @@ Usage:
 
 import os
 import sys
+import shutil
 from pathlib import Path
 
 # Add project root to path
@@ -198,6 +199,16 @@ def train_risk_predictor(config: dict):
     final_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), final_path)
     print(f"\nFinal model saved: {final_path}")
+    
+    # Auto-deploy to backend and models directories
+    deploy_targets = [
+        PROJECT_ROOT / "backend" / "saved_models" / "risk_predictor.pth",
+        PROJECT_ROOT / "models" / "risk_predictor.pth",
+    ]
+    for target in deploy_targets:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(final_path), str(target))
+        print(f"Deployed to: {target}")
     
     # Plot training history
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
