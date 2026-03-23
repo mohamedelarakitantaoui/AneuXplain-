@@ -19,6 +19,7 @@ from scipy.spatial import cKDTree  # type: ignore
 
 # Import from local architecture (self-contained backend)
 from .architecture import RiskPredictor, Autoencoder
+from .architecture_v2 import RiskPredictorV2, ConditionalVAE
 
 
 class CounterfactualEngine:
@@ -59,8 +60,10 @@ class CounterfactualEngine:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Models (loaded on demand)
-        self.risk_predictor: Optional[RiskPredictor] = None
+        self.risk_predictor = None  # Can be RiskPredictor or RiskPredictorV2
         self.autoencoder: Optional[Autoencoder] = None
+        self.cvae: Optional[ConditionalVAE] = None
+        self.is_v2_model = False  # Track if we're using V2 model
         
         self._models_loaded = False
     
@@ -72,24 +75,45 @@ class CounterfactualEngine:
         """
         Load the trained model weights.
         
+        Automatically detects V2 models and loads them appropriately.
+        
         Args:
             risk_predictor_path: Path to risk predictor weights (.pth)
             autoencoder_path: Path to autoencoder weights (.pth) - optional
         """
-        # Default paths
+        # Default paths - prefer V2 model
         if risk_predictor_path is None:
-            rpp = self.models_dir / "risk_predictor.pth"
+            # Check for V2 model first
+            v2_path = self.models_dir / "risk_predictor_v2.pth"
+            v1_path = self.models_dir / "risk_predictor.pth"
+            
+            if v2_path.exists():
+                rpp = v2_path
+            elif v1_path.exists():
+                rpp = v1_path
+            else:
+                raise FileNotFoundError(f"No risk predictor weights found in {self.models_dir}")
         else:
             rpp = Path(risk_predictor_path)
         
-        # Load Risk Predictor
+        # Load state dict to detect architecture
         if not rpp.exists():
             raise FileNotFoundError(f"Risk predictor weights not found: {rpp}")
         
-        self.risk_predictor = RiskPredictor(latent_dim=self.latent_dim)
-        self.risk_predictor.load_state_dict(
-            torch.load(str(rpp), map_location=self.device, weights_only=True)
-        )
+        state_dict = torch.load(str(rpp), map_location=self.device, weights_only=True)
+        
+        # Detect if it's a V2 model (V2 has 3 hidden layers with BatchNorm)
+        # V2 model has keys like mlp_head.8.weight (for final layer)
+        self.is_v2_model = 'mlp_head.8.weight' in state_dict or 'mlp_head.12.weight' in state_dict
+        
+        if self.is_v2_model:
+            print("   [+] Loading V2 model (BatchNorm, continuous risk)")
+            self.risk_predictor = RiskPredictorV2(latent_dim=self.latent_dim)
+        else:
+            print("   [+] Loading V1 model (legacy)")
+            self.risk_predictor = RiskPredictor(latent_dim=self.latent_dim)
+        
+        self.risk_predictor.load_state_dict(state_dict)
         self.risk_predictor.to(self.device)
         self.risk_predictor.eval()
         
@@ -97,7 +121,14 @@ class CounterfactualEngine:
         for param in self.risk_predictor.parameters():
             param.requires_grad = False
         
-        # Optionally load Autoencoder
+        # Load Autoencoder (auto-detect if path not given)
+        if autoencoder_path is None:
+            for name in ["autoencoder_v2.pth", "artery_autoencoder.pth"]:
+                candidate = self.models_dir / name
+                if candidate.exists():
+                    autoencoder_path = str(candidate)
+                    break
+
         if autoencoder_path is not None:
             aep = Path(autoencoder_path)
             if aep.exists():
@@ -110,7 +141,26 @@ class CounterfactualEngine:
                 )
                 self.autoencoder.to(self.device)
                 self.autoencoder.eval()
-        
+                for param in self.autoencoder.parameters():
+                    param.requires_grad = False
+                print(f"   [+] Autoencoder loaded from {aep.name}")
+
+        # Load Conditional VAE (if available — enables one-pass healing)
+        cvae_path = self.models_dir / "cvae.pth"
+        if cvae_path.exists():
+            self.cvae = ConditionalVAE(
+                latent_dim=self.latent_dim,
+                num_points=self.num_points
+            )
+            self.cvae.load_state_dict(
+                torch.load(str(cvae_path), map_location=self.device, weights_only=True)
+            )
+            self.cvae.to(self.device)
+            self.cvae.eval()
+            for param in self.cvae.parameters():
+                param.requires_grad = False
+            print("   [+] ConditionalVAE loaded (one-pass healing enabled)")
+
         self._models_loaded = True
     
     def _ensure_models_loaded(self) -> None:
@@ -202,30 +252,69 @@ class CounterfactualEngine:
         else:
             vertices_normalized = vertices_centered
         
-        # Build KD-tree of sampled original points for nearest neighbor lookup
+        # ---- Establish point correspondence via nearest-neighbor matching ----
+        # The CVAE decoder outputs points in arbitrary order, so index-based
+        # subtraction (healed[i] - original[i]) is meaningless.  Instead:
+        # 1. Re-center healed points to match original center of mass
+        # 2. For each original point, find its nearest healed point
+        # 3. Displacement = matched_healed - original  (localized deformation)
+        # 4. Subtract residual global shift
+
+        healed_centered = (
+            sampled_points_healed
+            - sampled_points_healed.mean(axis=0)
+            + sampled_points_original.mean(axis=0)
+        )
+
+        healed_tree = cKDTree(healed_centered)
+        _, nn_indices = healed_tree.query(sampled_points_original)
+        matched_healed = healed_centered[nn_indices]
+
+        displacements = matched_healed - sampled_points_original  # (N, 3)
+
+        # Remove residual global shift (keeps only local deformation)
+        displacements = displacements - displacements.mean(axis=0)
+
+        # Build KD-tree of sampled original points for vertex interpolation
         tree = cKDTree(sampled_points_original)
-        
-        # For each mesh vertex, find the closest sampled point and apply its displacement
-        distances, indices = tree.query(vertices_normalized, k=3)  # Use 3 nearest neighbors
-        
-        # Compute displacement field from sampled points
-        displacements = sampled_points_healed - sampled_points_original  # (N, 3)
-        
-        # Apply weighted displacement to each vertex using inverse distance weighting
+
+        # Use 6 nearest neighbors for smoother interpolation
+        k_interp = 6
+        distances, indices = tree.query(vertices_normalized, k=k_interp)
+
+        # Compute Gaussian kernel bandwidth (sigma = mean nearest-neighbor distance)
+        nn_dists, _ = tree.query(sampled_points_original, k=2)  # k=2: self + nearest
+        sigma = float(np.mean(nn_dists[:, 1]))  # Mean distance to nearest neighbor
+        sigma = max(sigma, 1e-6)  # Safety floor
+
+        # Cap max displacement at 15% of unit sphere as a safety limit.
+        # With proper NN matching the displacements are already reasonable,
+        # so this rarely activates.
+        max_allowed = 0.15
+        disp_norms = np.linalg.norm(displacements, axis=1)
+        current_max = np.max(disp_norms) if len(disp_norms) > 0 else 1.0
+        if current_max > max_allowed:
+            displacements = displacements * (max_allowed / current_max)
+
+        # Apply weighted displacement using Gaussian kernel (bounded weights, no explosion)
         new_vertices_normalized = np.zeros_like(vertices_normalized)
         for i in range(len(vertices_normalized)):
             neighbor_indices = indices[i]
             neighbor_distances = distances[i]
-            
-            # Avoid division by zero
-            weights = 1.0 / (neighbor_distances + 1e-8)
-            weights = weights / np.sum(weights)
-            
+
+            # Gaussian kernel: bounded even when distance is ~0
+            weights = np.exp(-neighbor_distances**2 / (2.0 * sigma**2))
+            weight_sum = np.sum(weights)
+            if weight_sum > 0:
+                weights = weights / weight_sum
+            else:
+                weights = np.ones(k_interp) / k_interp  # Fallback: uniform
+
             # Weighted average of displacements from nearest sampled points
             weighted_displacement = np.zeros(3)
             for j, idx in enumerate(neighbor_indices):
                 weighted_displacement += weights[j] * displacements[idx]
-            
+
             new_vertices_normalized[i] = vertices_normalized[i] + weighted_displacement
         
         # Denormalize back to original scale
@@ -258,261 +347,228 @@ class CounterfactualEngine:
         
         # Predict
         with torch.no_grad():
-            risk_score = self.risk_predictor(tensor).item()
+            if self.is_v2_model:
+                # V2 model - get probability directly
+                risk_score = self.risk_predictor(tensor, return_logits=False).item()
+            else:
+                # V1 model - already outputs probability
+                risk_score = self.risk_predictor(tensor).item()
         
         return risk_score
     
     def heal_artery(
         self,
         mesh_path: str,
-        learning_rate: float = 0.015,
-        num_steps: int = 500,
-        lambda_smooth: float = 0.1,
-        target_risk: float = 0.15,
-        save_intermediate: bool = False,
+        learning_rate: float = 0.01,
+        num_steps: int = 300,
+        target_risk: float = 0.05,
+        lambda_latent: float = 0.1,
     ) -> Tuple[str, dict]:
         """
         Generate a counterfactual "healed" version of a sick artery.
-        
-        Uses a DYNAMIC WEIGHT SCHEDULE for the distance regularization:
-        - Steps 0-149: lambda_distance = 0.0 (NO constraint - let it deform wildly)
-        - Steps 150-299: lambda_distance = 0.5 (weak constraint - start pulling back)
-        - Steps 300-500: lambda_distance = 2.0 (tighten up - preserve topology)
-        
-        Also includes LAPLACIAN SMOOTHING LOSS to prevent crumpled/noisy geometry.
-        
-        CRITICAL: Returns the mesh from the step with LOWEST RISK, not the last step.
-        
+
+        Strategy (in priority order):
+        1. **CVAE** — single forward pass conditioned on target_risk.
+        2. **Latent-space optimization** — gradient descent on z through
+           the autoencoder decoder + frozen risk predictor.
+
         Args:
             mesh_path: Path to the input artery mesh file
-            learning_rate: Optimization learning rate
-            num_steps: Number of optimization steps (default: 500)
-            lambda_smooth: Weight for Laplacian smoothing loss
-            target_risk: Stop early if risk drops below this value
-            save_intermediate: Whether to save intermediate results
-            
+            learning_rate: LR for latent-space fallback
+            num_steps: Max steps for latent-space fallback
+            target_risk: Desired risk level
+            lambda_latent: Latent regularization for fallback
+
         Returns:
             Tuple of (healed_mesh_path, result_dict)
-            - healed_mesh_path: Path to the output healed OBJ file
-            - result_dict: Dictionary with optimization details
         """
         self._ensure_models_loaded()
         assert self.risk_predictor is not None, "Risk predictor not loaded"
-        
+
         # Generate unique output filename
         output_id = str(uuid.uuid4())[:8]
         healed_path = self.output_dir / f"healed_{output_id}.obj"
-        
+
         # Load original artery
         original_points = self._load_mesh_as_points(mesh_path)
         original_tensor = self._points_to_tensor(original_points)
-        
-        # Get initial risk score
+
+        # Initial risk
         with torch.no_grad():
-            initial_risk = self.risk_predictor(original_tensor).item()
-        
-        # ================================================================
-        # BUILD LAPLACIAN MATRIX FOR SMOOTHING
-        # ================================================================
-        # For point clouds, we approximate Laplacian using k-nearest neighbors
-        # This ensures smooth deformations (no crumpled paper effect)
-        k_neighbors = 8
-        points_np = original_points  # (N, 3)
-        tree = cKDTree(points_np)
-        _, neighbor_indices = tree.query(points_np, k=k_neighbors + 1)  # +1 because first is self
-        neighbor_indices = neighbor_indices[:, 1:]  # Remove self (N, k)
-        
-        # Convert to tensor for GPU computation
-        neighbor_indices_tensor = torch.tensor(neighbor_indices, dtype=torch.long, device=self.device)
-        
-        # ================================================================
-        # SETUP OPTIMIZATION
-        # ================================================================
-        # We optimize a deformation field (delta) rather than absolute positions
-        points_delta = torch.zeros_like(original_tensor, requires_grad=True)
-        optimizer = optim.Adam([points_delta], lr=learning_rate, betas=(0.9, 0.999))
-        
-        # Cosine annealing for smooth LR decay
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=num_steps, eta_min=1e-5
-        )
-        
-        # Optimization history
-        history = {
-            'steps': [],
-            'risk_scores': [],
-            'movements': [],
-            'lambda_distance': [],
-            'lambda_smooth': [],
-            'learning_rate': []
-        }
-        
-        # Track the BEST result (lowest risk)
-        best_risk = initial_risk
-        best_delta = points_delta.clone().detach()
-        best_step = 0
-        
-        # ================================================================
-        # OPTIMIZATION LOOP WITH DYNAMIC WEIGHT SCHEDULE
-        # ================================================================
-        for step in range(num_steps):
-            optimizer.zero_grad()
-            
-            # ============================================================
-            # DYNAMIC LAMBDA SCHEDULE (the key to handling bifurcations!)
-            # ============================================================
-            if step < 150:
-                # Phase 1: WILD DEFORMATION - disable distance penalty completely
-                # Let the optimizer find the risk-reducing direction freely
-                lambda_dist = 0.0
-            elif step < 300:
-                # Phase 2: GENTLE CONSTRAINT - start pulling back
-                lambda_dist = 0.5
+            if self.is_v2_model:
+                initial_risk = self.risk_predictor(original_tensor, return_logits=False).item()
             else:
-                # Phase 3: TIGHTEN UP - enforce topology preservation
-                lambda_dist = 2.0
-            
-            # Apply deformation to get current points
-            current_points = original_tensor + points_delta
-            
-            # ============================================================
-            # LOSS 1: RISK SCORE (primary objective)
-            # ============================================================
-            risk_score = self.risk_predictor(current_points)
-            loss_risk = risk_score.squeeze()
-            
-            # ============================================================
-            # LOSS 2: DISTANCE REGULARIZATION (dynamic weight)
-            # ============================================================
-            movement_sq = torch.mean(points_delta ** 2)
-            loss_distance = lambda_dist * movement_sq
-            
-            # ============================================================
-            # LOSS 3: LAPLACIAN SMOOTHING (prevents crumpled geometry)
-            # ============================================================
-            # Compute Laplacian: for each point, difference from neighbor average
-            # points_delta shape: (1, 3, N)
-            delta_transposed = points_delta.squeeze(0).transpose(0, 1)  # (N, 3)
-            
-            # Gather neighbor deltas: (N, k, 3)
-            neighbor_deltas = delta_transposed[neighbor_indices_tensor]  # (N, k, 3)
-            
-            # Average of neighbors: (N, 3)
-            neighbor_avg = torch.mean(neighbor_deltas, dim=1)
-            
-            # Laplacian: difference between point and its neighbor average
-            laplacian = delta_transposed - neighbor_avg  # (N, 3)
-            
-            # Smoothing loss: penalize large Laplacian (non-smooth deformations)
-            loss_smooth = lambda_smooth * torch.mean(laplacian ** 2)
-            
-            # ============================================================
-            # LOSS 4: INWARD BIAS (prevents inflation, promotes deflation)
-            # ============================================================
-            # For aneurysms, we want to SHRINK bulges, not inflate
-            # Penalize outward (positive radial) movement more than inward
-            
-            # Compute centroid of original points
-            # original_tensor shape: (1, 3, N)
-            centroid = torch.mean(original_tensor, dim=2, keepdim=True)  # (1, 3, 1)
-            
-            # Radial direction from centroid to each point (normalized)
-            radial_vec = original_tensor - centroid  # (1, 3, N)
-            radial_norm = torch.norm(radial_vec, dim=1, keepdim=True) + 1e-8  # (1, 1, N)
-            radial_unit = radial_vec / radial_norm  # (1, 3, N) - unit vectors pointing outward
-            
-            # Project delta onto radial direction: positive = outward, negative = inward
-            radial_movement = torch.sum(points_delta * radial_unit, dim=1)  # (1, N)
-            
-            # Penalize ONLY outward movement (positive values)
-            # ReLU keeps only positive values, so only outward movement is penalized
-            lambda_inward = 0.3  # Weight for inward bias
-            loss_inward = lambda_inward * torch.mean(torch.relu(radial_movement) ** 2)
-            
-            # ============================================================
-            # TOTAL LOSS
-            # ============================================================
-            total_loss = loss_risk + loss_distance + loss_smooth + loss_inward
-            
-            # Backward pass
-            total_loss.backward()
-            
-            # Gradient clipping (allow larger gradients in wild phase)
-            max_grad_norm = 5.0 if step < 150 else 2.0
-            torch.nn.utils.clip_grad_norm_([points_delta], max_norm=max_grad_norm)
-            
-            optimizer.step()
-            scheduler.step()
-            
-            # Track progress
-            current_risk = risk_score.item()
-            current_movement = torch.sqrt(movement_sq).item()
-            
-            history['steps'].append(step)
-            history['risk_scores'].append(current_risk)
-            history['movements'].append(current_movement)
-            history['lambda_distance'].append(lambda_dist)
-            history['lambda_smooth'].append(lambda_smooth)
-            history['learning_rate'].append(optimizer.param_groups[0]['lr'])
-            
-            # ============================================================
-            # SAVE BEST (lowest risk, not last step!)
-            # ============================================================
-            if current_risk < best_risk:
-                best_risk = current_risk
-                best_delta = points_delta.clone().detach()
-                best_step = step
-            
-            # Save intermediate (optional)
-            if save_intermediate and step % 100 == 0:
-                with torch.no_grad():
-                    intermediate = (original_tensor + points_delta).squeeze(0).transpose(0, 1).cpu().numpy()
-                intermediate_path = self.output_dir / f"step_{step:04d}_{output_id}.obj"
-                self._save_points_as_obj(intermediate, str(intermediate_path))
-            
-            # Early stopping if we hit target
-            if current_risk < target_risk:
-                break
-        
-        # ================================================================
-        # GENERATE FINAL HEALED ARTERY FROM BEST STEP
-        # ================================================================
-        with torch.no_grad():
-            healed_tensor = original_tensor + best_delta
-            healed_points = healed_tensor.squeeze(0).transpose(0, 1).cpu().numpy()
-            final_risk = self.risk_predictor(healed_tensor).item()
-        
-        # Save output as a proper mesh with faces (not just points!)
-        # This transfers the learned deformation to the full mesh topology
+                initial_risk = self.risk_predictor(original_tensor).item()
+
+        # =============================================================
+        # Choose healing method
+        # =============================================================
+        if self.cvae is not None:
+            healed_points, final_risk, method_result = self._heal_cvae(
+                original_tensor, target_risk
+            )
+        elif self.autoencoder is not None:
+            healed_points, final_risk, method_result = self._heal_latent_opt(
+                original_tensor, learning_rate, num_steps, target_risk, lambda_latent
+            )
+        else:
+            raise RuntimeError(
+                "Healing requires a CVAE or Autoencoder. "
+                "Place cvae.pth or autoencoder_v2.pth in models/."
+            )
+
+        # Transfer deformation to full mesh topology (preserves faces)
         self._save_deformed_mesh(
             original_mesh_path=mesh_path,
             sampled_points_original=original_points,
             sampled_points_healed=healed_points,
             file_path=str(healed_path)
         )
-        
-        # Compute statistics
-        delta_np = best_delta.squeeze(0).transpose(0, 1).cpu().numpy()
-        point_movements = np.linalg.norm(delta_np, axis=1)
-        
+
+        # Displacement statistics (NN-matched, consistent with mesh deformation)
+        healed_centered = (
+            healed_points
+            - healed_points.mean(axis=0)
+            + original_points.mean(axis=0)
+        )
+        _ht = cKDTree(healed_centered)
+        _, _nn_idx = _ht.query(original_points)
+        displacement = healed_centered[_nn_idx] - original_points
+        displacement = displacement - displacement.mean(axis=0)
+        point_movements = np.linalg.norm(displacement, axis=1)
+
         result = {
             'initial_risk': initial_risk,
             'final_risk': final_risk,
             'risk_reduction': initial_risk - final_risk,
             'risk_reduction_pct': 100 * (initial_risk - final_risk) / initial_risk if initial_risk > 0 else 0,
-            'steps_taken': len(history['steps']),
-            'best_step': best_step,
             'mean_movement': float(np.mean(point_movements)),
             'max_movement': float(np.max(point_movements)),
             'healed_path': str(healed_path),
             'success': final_risk < 0.5,
-            'schedule_used': 'dynamic_3phase',
-            'laplacian_smoothing': True,
-            'inward_bias': True,  # NEW: Inward bias constraint enabled
-            'history': history
         }
-        
+        result.update(method_result)
+
         return str(healed_path), result
+
+    # ------------------------------------------------------------------
+    # Healing backends
+    # ------------------------------------------------------------------
+
+    def _heal_cvae(
+        self,
+        original_tensor: torch.Tensor,
+        target_risk: float,
+    ) -> Tuple[np.ndarray, float, dict]:
+        """One-pass healing via Conditional VAE."""
+        assert self.cvae is not None
+
+        with torch.no_grad():
+            healed_tensor = self.cvae.generate_healthy(original_tensor, target_risk=target_risk)
+            healed_points = healed_tensor.squeeze(0).transpose(0, 1).cpu().numpy()
+
+            # Normalize CVAE output to unit sphere (same space as input).
+            # The decoder may produce points that aren't zero-centered or
+            # unit-scaled; scoring the raw output gives misleadingly low risk.
+            healed_center = healed_points.mean(axis=0)
+            healed_points = healed_points - healed_center
+            healed_max = np.max(np.linalg.norm(healed_points, axis=1))
+            if healed_max > 0:
+                healed_points = healed_points / healed_max
+
+            # Re-score the normalized output for honest risk reporting
+            healed_norm_tensor = torch.tensor(
+                healed_points, dtype=torch.float32
+            ).unsqueeze(0).transpose(2, 1).to(self.device)
+
+            if self.is_v2_model:
+                final_risk = self.risk_predictor(healed_norm_tensor, return_logits=False).item()
+            else:
+                final_risk = self.risk_predictor(healed_norm_tensor).item()
+
+        return healed_points, final_risk, {
+            'method': 'cvae',
+            'steps_taken': 1,
+            'best_step': 0,
+        }
+
+    def _heal_latent_opt(
+        self,
+        original_tensor: torch.Tensor,
+        learning_rate: float,
+        num_steps: int,
+        target_risk: float,
+        lambda_latent: float,
+    ) -> Tuple[np.ndarray, float, dict]:
+        """Iterative healing via latent-space gradient descent."""
+        assert self.autoencoder is not None
+
+        with torch.no_grad():
+            z_original = self.autoencoder.encode(original_tensor)
+            if self.is_v2_model:
+                initial_risk = self.risk_predictor(original_tensor, return_logits=False).item()
+            else:
+                initial_risk = self.risk_predictor(original_tensor).item()
+
+        z_opt = z_original.clone().detach().requires_grad_(True)
+        optimizer = optim.Adam([z_opt], lr=learning_rate)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=num_steps, eta_min=1e-5
+        )
+
+        best_risk = initial_risk
+        best_z = z_opt.clone().detach()
+        best_step = 0
+
+        history = {'steps': [], 'risk_scores': [], 'latent_distance': [], 'learning_rate': []}
+
+        for step in range(num_steps):
+            optimizer.zero_grad()
+
+            recon = self.autoencoder.decode(z_opt)
+
+            if self.is_v2_model:
+                loss_risk = torch.sigmoid(self.risk_predictor(recon, return_logits=True)).squeeze()
+            else:
+                loss_risk = self.risk_predictor(recon).squeeze()
+
+            latent_dist = torch.mean((z_opt - z_original) ** 2)
+            total_loss = loss_risk + lambda_latent * latent_dist
+            total_loss.backward()
+
+            torch.nn.utils.clip_grad_norm_([z_opt], max_norm=1.0)
+            optimizer.step()
+            scheduler.step()
+
+            current_risk = loss_risk.item()
+            history['steps'].append(step)
+            history['risk_scores'].append(current_risk)
+            history['latent_distance'].append(latent_dist.item())
+            history['learning_rate'].append(optimizer.param_groups[0]['lr'])
+
+            if current_risk < best_risk:
+                best_risk = current_risk
+                best_z = z_opt.clone().detach()
+                best_step = step
+
+            if current_risk < target_risk:
+                break
+
+        with torch.no_grad():
+            healed_tensor = self.autoencoder.decode(best_z)
+            healed_points = healed_tensor.squeeze(0).transpose(0, 1).cpu().numpy()
+            if self.is_v2_model:
+                final_risk = self.risk_predictor(healed_tensor, return_logits=False).item()
+            else:
+                final_risk = self.risk_predictor(healed_tensor).item()
+
+        return healed_points, final_risk, {
+            'method': 'latent_space',
+            'steps_taken': len(history['steps']),
+            'best_step': best_step,
+            'latent_distance': float(torch.mean((best_z - z_original) ** 2).item()),
+            'history': history,
+        }
     
     def get_device_info(self) -> dict:
         """Get information about the compute device being used."""

@@ -275,9 +275,9 @@ export function MorphControlBar({
   if (!visible && !canHeal) return null;
 
   const getRiskState = (t) => {
-    if (t < 0.3) return { label: 'BASELINE', color: 'text-red-400', bg: 'bg-red-500/20' };
+    if (t < 0.3) return { label: 'ORIGINAL', color: 'text-red-400', bg: 'bg-red-500/20' };
     if (t < 0.7) return { label: 'MORPHING', color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
-    return { label: 'OPTIMIZED', color: 'text-emerald-400', bg: 'bg-emerald-500/20' };
+    return { label: 'HEALED', color: 'text-emerald-400', bg: 'bg-emerald-500/20' };
   };
 
   const riskState = getRiskState(morphValue);
@@ -322,7 +322,7 @@ export function MorphControlBar({
       {visible && (
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <span className="text-[9px] text-slate-500 uppercase tracking-[0.15em] block">BASELINE (Pre-Op)</span>
+            <span className="text-[9px] text-slate-500 uppercase tracking-[0.15em] block">PRE-OP</span>
             <span className="text-xs text-red-400 font-medium">Original</span>
           </div>
 
@@ -369,8 +369,8 @@ export function MorphControlBar({
           </div>
 
           <div className="text-left">
-            <span className="text-[9px] text-slate-500 uppercase tracking-[0.15em] block">OPTIMIZED (Target)</span>
-            <span className="text-xs text-emerald-400 font-medium">Geometry</span>
+            <span className="text-[9px] text-slate-500 uppercase tracking-[0.15em] block">POST-OP</span>
+            <span className="text-xs text-emerald-400 font-medium">Healed</span>
           </div>
         </div>
       )}

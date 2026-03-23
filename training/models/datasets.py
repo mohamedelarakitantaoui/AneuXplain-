@@ -155,7 +155,7 @@ class LabeledArteryDataset(PointCloudDataset):
                 file_path = row['filename']
             
             if os.path.exists(file_path):
-                score_col = 'curvature_score' if 'curvature_score' in row else 'risk_score'
+                score_col = 'risk_score' if 'risk_score' in row else 'curvature_score'
                 self.samples.append({
                     'file_path': file_path,
                     'filename': row['filename'],
