@@ -42,6 +42,12 @@ data/
 # Legacy code
 _legacy/
 
+# Claude Code local config
+.claude/
+
+# Debug artifacts
+_ul
+
 # Other
 *.log
 .env

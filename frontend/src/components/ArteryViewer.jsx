@@ -14,7 +14,7 @@ import {
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import * as THREE from 'three';
 import DifferenceMesh, { HeatmapLegend } from './DifferenceMesh';
-import MorphingMesh, { MorphSliderLegend } from './MorphingMesh';
+import MorphingMesh from './MorphingMesh';
 import MorphArtery from './MorphArtery';
 
 // ============================================
@@ -482,30 +482,35 @@ export default function ArteryViewer({
       </Canvas>
 
       {/* Legend - Only show in comparison mode */}
+      {/* Legend - context-aware based on view mode */}
       {showComparison && (
         <div className="absolute bottom-28 left-8 bg-[rgba(20,20,20,0.8)] backdrop-blur-xl rounded-2xl p-4 border border-white/10 shadow-xl">
           {viewMode === 'heatmap' ? (
             <HeatmapLegend />
           ) : viewMode === 'morph' ? (
-            <div className="flex flex-col gap-3">
-              <MorphSliderLegend morphValue={morphValue} onMorphChange={onMorphValueChange} />
-              {/* Root Cause Toggle in Legend */}
-              {showHeatmap && (
-                <div className="border-t border-slate-700 pt-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-purple-400 text-xs font-medium">🎯 Root Cause Active</span>
-                  </div>
-                  <div className="w-full h-2 rounded"
-                    style={{
-                      background: 'linear-gradient(to right, #3b82f6, #06b6d4, #10b981, #eab308, #ef4444)'
-                    }}
-                  />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
-                    <span>Healthy</span>
-                    <span>Aneurysm</span>
-                  </div>
-                </div>
-              )}
+            /* Simple morph status indicator — slider is in bottom control bar */
+            <div className="flex flex-col gap-2 min-w-45">
+              <div className="flex items-center gap-2">
+                <span className="text-cyan-400 font-semibold text-sm">Morph View</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-red-400">Original</span>
+                <span className="text-emerald-400">Healed</span>
+              </div>
+              <div className="w-full h-2 rounded-full"
+                style={{
+                  background: 'linear-gradient(to right, #ef4444 0%, #eab308 50%, #22c55e 100%)'
+                }}
+              />
+              <div className="relative w-full h-0">
+                <div
+                  className="absolute -top-3 w-2 h-2 bg-white rounded-full border border-slate-400"
+                  style={{ left: `${morphValue * 100}%`, transform: 'translateX(-50%)' }}
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 text-center mt-1">
+                t = {morphValue.toFixed(2)}
+              </p>
             </div>
           ) : (
             <div className="flex flex-col gap-2 text-sm">

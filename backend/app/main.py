@@ -24,7 +24,8 @@ from .engine import CounterfactualEngine
 # Configuration
 # ============================================
 BACKEND_DIR = Path(__file__).parent.parent  # backend/
-MODELS_DIR = BACKEND_DIR / "saved_models"
+PROJECT_ROOT = BACKEND_DIR.parent  # project root
+MODELS_DIR = PROJECT_ROOT / "models"
 OUTPUT_DIR = BACKEND_DIR / "outputs"
 TEMP_DIR = BACKEND_DIR / "temp"
 
@@ -45,7 +46,7 @@ async def lifespan(app: FastAPI):
     """Load models on startup, cleanup on shutdown."""
     global engine
     
-    print("🚀 Starting Artery Analysis API...")
+    print("Starting Artery Analysis API...")
     print(f"   Models directory: {MODELS_DIR}")
     print(f"   Output directory: {OUTPUT_DIR}")
     
@@ -57,11 +58,11 @@ async def lifespan(app: FastAPI):
     
     # Try to load models
     try:
-        # Look for risk predictor weights
-        risk_predictor_path = MODELS_DIR / "risk_predictor.pth"
+        # Look for risk predictor weights - prefer V2
+        risk_predictor_path = MODELS_DIR / "risk_predictor_v2.pth"
         if not risk_predictor_path.exists():
-            # Try alternative names
-            for alt_name in ["risk_predictor_best_gap.pth", "risk_predictor_v2.pth"]:
+            # Fall back to other options
+            for alt_name in ["risk_predictor.pth", "risk_predictor_best_gap.pth"]:
                 alt_path = MODELS_DIR / alt_name
                 if alt_path.exists():
                     risk_predictor_path = alt_path
@@ -69,12 +70,12 @@ async def lifespan(app: FastAPI):
         
         if risk_predictor_path.exists():
             engine.load_models(risk_predictor_path=str(risk_predictor_path))
-            print(f"   ✓ Models loaded successfully")
+            print("   [OK] Models loaded successfully")
         else:
-            print(f"   ⚠ No model weights found in {MODELS_DIR}")
+            print(f"   [WARN] No model weights found in {MODELS_DIR}")
             print(f"     Copy your .pth files to: {MODELS_DIR}")
     except Exception as e:
-        print(f"   ⚠ Error loading models: {e}")
+        print(f"   [ERR] Error loading models: {e}")
     
     device_info = engine.get_device_info()
     print(f"   Device: {device_info['device']}")
@@ -82,7 +83,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Cleanup on shutdown
-    print("🛑 Shutting down...")
+    print("Shutting down...")
     # Clean temp files
     if TEMP_DIR.exists():
         shutil.rmtree(TEMP_DIR, ignore_errors=True)
@@ -264,7 +265,7 @@ async def analyze_artery(file: UploadFile = File(...)):
 async def heal_artery(
     file: UploadFile = File(...),
     num_steps: int = Query(default=300, ge=50, le=1000, description="Optimization steps"),
-    target_risk: float = Query(default=0.3, ge=0.1, le=0.5, description="Target risk score"),
+    target_risk: float = Query(default=0.1, ge=0.01, le=0.5, description="Target risk score"),
     return_file: bool = Query(default=False, description="Return the healed mesh file directly")
 ):
     """

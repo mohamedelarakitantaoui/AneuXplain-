@@ -8,7 +8,9 @@ from .architectures import (
     Encoder,
     Decoder,
     Autoencoder,
+    ConditionalVAE,
     RiskPredictor,
+    RiskPredictorV2,
     ChamferDistanceLoss
 )
 
@@ -22,9 +24,11 @@ from .datasets import (
 __all__ = [
     # Architectures
     "Encoder",
-    "Decoder", 
+    "Decoder",
     "Autoencoder",
+    "ConditionalVAE",
     "RiskPredictor",
+    "RiskPredictorV2",
     "ChamferDistanceLoss",
     # Datasets
     "PointCloudDataset",

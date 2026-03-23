@@ -168,6 +168,54 @@ class Autoencoder(nn.Module):
         return self.decoder(z)
 
 
+class ConditionalVAE(nn.Module):
+    """
+    Conditional VAE for risk-conditioned artery generation.
+
+    Encoder  → (mu, logvar)  in R^latent_dim
+    Decoder  ← (z, risk)     from R^(latent_dim+1)
+
+    generate_healthy(x, target_risk) does healing in one forward pass.
+    """
+
+    def __init__(self, latent_dim: int = 128, num_points: int = 2048):
+        super(ConditionalVAE, self).__init__()
+        self.latent_dim = latent_dim
+        self.num_points = num_points
+        self.encoder = Encoder(latent_dim=latent_dim * 2)
+        self.decoder = Decoder(latent_dim=latent_dim + 1, num_points=num_points)
+
+    def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def forward(self, x: torch.Tensor, risk_label: torch.Tensor) -> tuple:
+        h = self.encoder(x)
+        mu, logvar = h[:, :self.latent_dim], h[:, self.latent_dim:]
+        z = self.reparameterize(mu, logvar)
+        risk = risk_label.view(-1, 1)
+        z_cond = torch.cat([z, risk], dim=1)
+        recon = self.decoder(z_cond)
+        return recon, mu, logvar
+
+    def encode(self, x: torch.Tensor) -> tuple:
+        h = self.encoder(x)
+        return h[:, :self.latent_dim], h[:, self.latent_dim:]
+
+    def decode(self, z: torch.Tensor, risk_label: torch.Tensor) -> torch.Tensor:
+        risk = risk_label.view(-1, 1)
+        z_cond = torch.cat([z, risk], dim=1)
+        return self.decoder(z_cond)
+
+    def generate_healthy(self, x: torch.Tensor, target_risk: float = 0.1) -> torch.Tensor:
+        """One-pass healing: encode → mean → decode at target risk."""
+        mu, _ = self.encode(x)
+        target = torch.full((mu.shape[0], 1), target_risk, device=mu.device)
+        z_cond = torch.cat([mu, target], dim=1)
+        return self.decoder(z_cond)
+
+
 class ChamferDistanceLoss(nn.Module):
     """Chamfer Distance Loss for point cloud comparison."""
 

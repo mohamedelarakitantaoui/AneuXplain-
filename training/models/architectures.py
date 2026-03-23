@@ -139,32 +139,154 @@ class Autoencoder(nn.Module):
         return self.decoder(z)
 
 
+class ConditionalVAE(nn.Module):
+    """
+    Conditional Variational Autoencoder for risk-conditioned artery generation.
+
+    The encoder maps a point cloud to (mu, logvar) in latent space.
+    The decoder takes (z, risk_label) and reconstructs a point cloud whose
+    geometry corresponds to the given risk level.
+
+    Healing is a single forward pass:  encode → take mu → concat low risk → decode.
+    """
+
+    def __init__(self, latent_dim: int = 128, num_points: int = 2048):
+        super(ConditionalVAE, self).__init__()
+        self.latent_dim = latent_dim
+        self.num_points = num_points
+
+        # Encoder outputs 2x latent_dim (mu + logvar)
+        self.encoder = Encoder(latent_dim=latent_dim * 2)
+
+        # Decoder takes latent + 1 risk condition value
+        self.decoder = Decoder(latent_dim=latent_dim + 1, num_points=num_points)
+
+    def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def forward(
+        self, x: torch.Tensor, risk_label: torch.Tensor
+    ) -> tuple:
+        """
+        Args:
+            x: Point cloud (B, 3, N)
+            risk_label: Risk scores (B,) or (B, 1), values in [0, 1]
+
+        Returns:
+            (recon, mu, logvar) — reconstructed point cloud, latent mean, latent logvar
+        """
+        h = self.encoder(x)  # (B, latent_dim * 2)
+        mu, logvar = h[:, :self.latent_dim], h[:, self.latent_dim:]
+        z = self.reparameterize(mu, logvar)
+
+        # Condition on risk
+        risk = risk_label.view(-1, 1)  # (B, 1)
+        z_cond = torch.cat([z, risk], dim=1)  # (B, latent_dim + 1)
+        recon = self.decoder(z_cond)  # (B, 3, N)
+
+        return recon, mu, logvar
+
+    def encode(self, x: torch.Tensor) -> tuple:
+        """Encode to (mu, logvar)."""
+        h = self.encoder(x)
+        mu, logvar = h[:, :self.latent_dim], h[:, self.latent_dim:]
+        return mu, logvar
+
+    def decode(self, z: torch.Tensor, risk_label: torch.Tensor) -> torch.Tensor:
+        """Decode latent + risk condition to point cloud."""
+        risk = risk_label.view(-1, 1)
+        z_cond = torch.cat([z, risk], dim=1)
+        return self.decoder(z_cond)
+
+    def generate_healthy(self, x: torch.Tensor, target_risk: float = 0.1) -> torch.Tensor:
+        """
+        One-pass healing: encode the input artery, then decode
+        conditioned on a low target risk.  Uses the mean (no sampling)
+        for deterministic output.
+        """
+        mu, _ = self.encode(x)
+        target = torch.full((mu.shape[0], 1), target_risk, device=mu.device)
+        z_cond = torch.cat([mu, target], dim=1)
+        return self.decoder(z_cond)
+
+
 class RiskPredictor(nn.Module):
     """
     Risk Prediction Model: PointNet Encoder + MLP Head.
     Takes a 3D artery point cloud and outputs a risk score (0-1).
     """
-    
+
     def __init__(self, latent_dim: int = 128):
         super(RiskPredictor, self).__init__()
         self.encoder = Encoder(latent_dim=latent_dim)
-        
+
         self.mlp_head = nn.Sequential(
             nn.Linear(latent_dim, 64),
             nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Dropout(0.3),
-            
+
             nn.Linear(64, 32),
             nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.Dropout(0.3),
-            
+
             nn.Linear(32, 1),
             nn.Sigmoid()
         )
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         latent = self.encoder(x)
         risk = self.mlp_head(latent)
         return risk
+
+
+class RiskPredictorV2(nn.Module):
+    """
+    Improved Risk Prediction Model for Continuous Risk Scores.
+
+    Key changes from V1:
+    1. BatchNorm after every Linear layer (stabilizes training)
+    2. Outputs LOGITS by default, apply sigmoid for probabilities
+    3. Deeper MLP head with proper regularization
+    4. Designed for continuous risk in [0, 1], not binary classification
+    """
+
+    def __init__(self, latent_dim: int = 128, dropout_rate: float = 0.3):
+        super(RiskPredictorV2, self).__init__()
+
+        self.encoder = Encoder(latent_dim=latent_dim)
+
+        self.mlp_head = nn.Sequential(
+            nn.Linear(latent_dim, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+
+            nn.Linear(64, 32),
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+
+            nn.Linear(32, 16),
+            nn.BatchNorm1d(16),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate * 0.5),
+
+            nn.Linear(16, 1),
+        )
+
+    def forward(self, x: torch.Tensor, return_logits: bool = True) -> torch.Tensor:
+        latent = self.encoder(x)
+        logits = self.mlp_head(latent)
+
+        if return_logits:
+            return logits
+
+        return torch.sigmoid(logits)
+
+    def predict_risk(self, x: torch.Tensor) -> torch.Tensor:
+        """Get calibrated risk probability in [0, 1]."""
+        return self.forward(x, return_logits=False)
