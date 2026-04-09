@@ -1,5 +1,5 @@
 """
-End-to-end validation of the NeuroTwin pipeline.
+End-to-end validation of the AneuXplain pipeline.
 
 Tests:
   1. Risk predictor separates aneurysm vs vessel

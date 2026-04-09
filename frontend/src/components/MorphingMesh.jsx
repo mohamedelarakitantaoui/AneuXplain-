@@ -114,137 +114,112 @@ export default function MorphingMesh({
       
       const origVertCount = origPositions.length / 3;
       console.log(`📊 MorphingMesh: Original=${origVertCount}, Healed=${healedVerts.length} vertices`);
-      
+
       // ============================================
-      // STEP 3: Normalize both point sets for matching
-      // This handles different scales/positions between meshes
+      // STEP 3: Establish vertex correspondence
       // ============================================
-      const normalizePointSet = (vertices) => {
-        // Compute centroid
-        let cx = 0, cy = 0, cz = 0;
-        for (const v of vertices) { 
-          cx += v.x; 
-          cy += v.y; 
-          cz += v.z; 
+      // Gradient healing preserves mesh topology (same faces, same vertex
+      // order), so when vertex counts match we use DIRECT INDEX correspondence.
+      // This avoids the independent-normalization + NN-matching pipeline that
+      // distorts the geometry (the old CVAE path needed NN because the decoder
+      // emitted unordered point clouds).
+
+      const useDirectCorrespondence = (origVertCount === healedVerts.length);
+
+      const healedMap = new Float32Array(origVertCount * 3);
+      const distances = new Float32Array(origVertCount);
+
+      if (useDirectCorrespondence) {
+        // --- DIRECT: vertex i → vertex i (same topology) ----------------
+        console.log('📐 MorphingMesh: Same topology detected — using direct vertex correspondence');
+        for (let i = 0; i < origVertCount; i++) {
+          healedMap[i * 3]     = healedVerts[i].x;
+          healedMap[i * 3 + 1] = healedVerts[i].y;
+          healedMap[i * 3 + 2] = healedVerts[i].z;
+
+          const dx = healedVerts[i].x - origPositions[i * 3];
+          const dy = healedVerts[i].y - origPositions[i * 3 + 1];
+          const dz = healedVerts[i].z - origPositions[i * 3 + 2];
+          distances[i] = Math.sqrt(dx*dx + dy*dy + dz*dz);
         }
-        cx /= vertices.length; 
-        cy /= vertices.length; 
-        cz /= vertices.length;
-        
-        // Compute max distance from centroid (for uniform scaling)
-        let maxDist = 0;
-        for (const v of vertices) {
-          const dx = v.x - cx, dy = v.y - cy, dz = v.z - cz;
-          const d = Math.sqrt(dx*dx + dy*dy + dz*dz);
-          if (d > maxDist) maxDist = d;
+      } else {
+        // --- NN FALLBACK: for CVAE / different-topology outputs ----------
+        console.log('🔍 MorphingMesh: Different vertex counts — using NN matching');
+
+        const normalizePointSet = (vertices) => {
+          let cx = 0, cy = 0, cz = 0;
+          for (const v of vertices) { cx += v.x; cy += v.y; cz += v.z; }
+          cx /= vertices.length; cy /= vertices.length; cz /= vertices.length;
+          let maxDist = 0;
+          for (const v of vertices) {
+            const d = Math.sqrt((v.x-cx)**2 + (v.y-cy)**2 + (v.z-cz)**2);
+            if (d > maxDist) maxDist = d;
+          }
+          return { cx, cy, cz, scale: maxDist || 1 };
+        };
+
+        const origVerts = [];
+        for (let i = 0; i < origVertCount; i++) {
+          origVerts.push({ x: origPositions[i*3], y: origPositions[i*3+1], z: origPositions[i*3+2] });
         }
-        
-        return { cx, cy, cz, scale: maxDist };
-      };
-      
-      // Build original vertices array
-      const origVerts = [];
-      for (let i = 0; i < origVertCount; i++) {
-        origVerts.push({
-          x: origPositions[i * 3],
-          y: origPositions[i * 3 + 1],
-          z: origPositions[i * 3 + 2]
+
+        const origNorm = normalizePointSet(origVerts);
+        const healedNorm = normalizePointSet(healedVerts);
+
+        const origNormalized = origVerts.map(v => ({
+          x: (v.x - origNorm.cx) / origNorm.scale,
+          y: (v.y - origNorm.cy) / origNorm.scale,
+          z: (v.z - origNorm.cz) / origNorm.scale
+        }));
+        const healedNormalized = healedVerts.map(v => ({
+          x: (v.x - healedNorm.cx) / healedNorm.scale,
+          y: (v.y - healedNorm.cy) / healedNorm.scale,
+          z: (v.z - healedNorm.cz) / healedNorm.scale
+        }));
+
+        const GRID_SIZE = 0.1;
+        const spatialHash = new Map();
+        const getGridKey = (x, y, z) =>
+          `${Math.floor(x/GRID_SIZE)},${Math.floor(y/GRID_SIZE)},${Math.floor(z/GRID_SIZE)}`;
+
+        healedNormalized.forEach((v, i) => {
+          const key = getGridKey(v.x, v.y, v.z);
+          if (!spatialHash.has(key)) spatialHash.set(key, []);
+          spatialHash.get(key).push({ ...v, index: i });
         });
-      }
-      
-      const origNorm = normalizePointSet(origVerts);
-      const healedNorm = normalizePointSet(healedVerts);
-      
-      // Normalize both point sets to unit sphere
-      const origNormalized = origVerts.map(v => ({
-        x: (v.x - origNorm.cx) / origNorm.scale,
-        y: (v.y - origNorm.cy) / origNorm.scale,
-        z: (v.z - origNorm.cz) / origNorm.scale
-      }));
-      
-      const healedNormalized = healedVerts.map(v => ({
-        x: (v.x - healedNorm.cx) / healedNorm.scale,
-        y: (v.y - healedNorm.cy) / healedNorm.scale,
-        z: (v.z - healedNorm.cz) / healedNorm.scale
-      }));
-      
-      // ============================================
-      // STEP 4: Build spatial hash for O(1) nearest neighbor lookup
-      // ============================================
-      const GRID_SIZE = 0.1;
-      const spatialHash = new Map();
-      
-      const getGridKey = (x, y, z) => {
-        return `${Math.floor(x / GRID_SIZE)},${Math.floor(y / GRID_SIZE)},${Math.floor(z / GRID_SIZE)}`;
-      };
-      
-      healedNormalized.forEach((v, i) => {
-        const key = getGridKey(v.x, v.y, v.z);
-        if (!spatialHash.has(key)) spatialHash.set(key, []);
-        spatialHash.get(key).push({ ...v, index: i });
-      });
-      
-      // ============================================
-      // STEP 5: Find nearest healed vertex for each original vertex
-      // This establishes the correspondence for morphing
-      // ============================================
-      const findNearestHealed = (v) => {
-        const gx = Math.floor(v.x / GRID_SIZE);
-        const gy = Math.floor(v.y / GRID_SIZE);
-        const gz = Math.floor(v.z / GRID_SIZE);
-        
-        let minDist = Infinity;
-        let nearest = null;
-        
-        // Search in 5x5x5 neighborhood for robustness
-        for (let dx = -2; dx <= 2; dx++) {
-          for (let dy = -2; dy <= 2; dy++) {
-            for (let dz = -2; dz <= 2; dz++) {
-              const key = `${gx+dx},${gy+dy},${gz+dz}`;
-              const cell = spatialHash.get(key);
-              if (cell) {
-                for (const h of cell) {
-                  const distSq = (v.x - h.x) ** 2 + (v.y - h.y) ** 2 + (v.z - h.z) ** 2;
-                  if (distSq < minDist) {
-                    minDist = distSq;
-                    nearest = h;
+
+        for (let i = 0; i < origVertCount; i++) {
+          const ov = origNormalized[i];
+          const gx = Math.floor(ov.x / GRID_SIZE);
+          const gy = Math.floor(ov.y / GRID_SIZE);
+          const gz = Math.floor(ov.z / GRID_SIZE);
+          let minDist = Infinity, nearest = null;
+
+          for (let ddx = -2; ddx <= 2; ddx++) {
+            for (let ddy = -2; ddy <= 2; ddy++) {
+              for (let ddz = -2; ddz <= 2; ddz++) {
+                const cell = spatialHash.get(`${gx+ddx},${gy+ddy},${gz+ddz}`);
+                if (cell) {
+                  for (const h of cell) {
+                    const dSq = (ov.x-h.x)**2 + (ov.y-h.y)**2 + (ov.z-h.z)**2;
+                    if (dSq < minDist) { minDist = dSq; nearest = h; }
                   }
                 }
               }
             }
           }
-        }
-        
-        // Fallback to brute force if spatial hash misses
-        if (!nearest) {
-          for (const h of healedNormalized) {
-            const distSq = (v.x - h.x) ** 2 + (v.y - h.y) ** 2 + (v.z - h.z) ** 2;
-            if (distSq < minDist) {
-              minDist = distSq;
-              nearest = h;
+          if (!nearest) {
+            for (const h of healedNormalized) {
+              const dSq = (ov.x-h.x)**2 + (ov.y-h.y)**2 + (ov.z-h.z)**2;
+              if (dSq < minDist) { minDist = dSq; nearest = h; }
             }
           }
+
+          healedMap[i*3]     = nearest.x * origNorm.scale + origNorm.cx;
+          healedMap[i*3 + 1] = nearest.y * origNorm.scale + origNorm.cy;
+          healedMap[i*3 + 2] = nearest.z * origNorm.scale + origNorm.cz;
+          distances[i] = Math.sqrt(minDist);
         }
-        
-        return { nearest, distance: Math.sqrt(minDist) };
-      };
-      
-      // ============================================
-      // STEP 6: Create morphing target positions and distances
-      // ============================================
-      const healedMap = new Float32Array(origVertCount * 3);
-      const distances = new Float32Array(origVertCount);
-      
-      for (let i = 0; i < origVertCount; i++) {
-        const origV = origNormalized[i];
-        const { nearest, distance } = findNearestHealed(origV);
-        
-        // Store healed position (denormalized to original mesh scale)
-        healedMap[i * 3] = nearest.x * origNorm.scale + origNorm.cx;
-        healedMap[i * 3 + 1] = nearest.y * origNorm.scale + origNorm.cy;
-        healedMap[i * 3 + 2] = nearest.z * origNorm.scale + origNorm.cz;
-        
-        distances[i] = distance;
       }
       
       // Create vertex colors based on distances (for root cause visualization)

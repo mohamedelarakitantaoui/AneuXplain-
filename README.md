@@ -1,4 +1,4 @@
-# NeuroTwin - Counterfactual Optimization Engine for Intracranial Artery Aneurysm Risk
+# AneuXplain - Explainable AI for Intracranial Aneurysm Rupture Risk Prediction
 
 A medical AI system that predicts aneurysm risk from 3D intracranial artery meshes and generates counterfactual "healed" geometries, showing what minimal geometric changes would theoretically reduce the risk. Built as a capstone project combining deep learning on 3D point clouds with an interactive medical workstation UI.
 
@@ -41,7 +41,7 @@ A medical AI system that predicts aneurysm risk from 3D intracranial artery mesh
 
 **Key Innovation:** Counterfactual geometry generation - the system doesn't just classify risk, it produces an interpretable "what-if" output: a deformed mesh that preserves the original topology while showing the minimal geometric changes needed to lower risk.
 
-**Named "NeuroTwin"** in the UI - a digital twin concept applied to neurovascular anatomy.
+**Named "AneuXplain"** in the UI - explainable AI applied to neurovascular anatomy.
 
 ---
 

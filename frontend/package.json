@@ -17,6 +17,8 @@
     "autoprefixer": "^10.4.23",
     "axios": "^1.13.2",
     "framer-motion": "^12.25.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
     "postcss": "^8.5.6",
     "react": "^19.2.0",
