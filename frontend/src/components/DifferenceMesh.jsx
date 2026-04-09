@@ -69,112 +69,107 @@ export default function DifferenceMesh({
       const healedCount = healedPositions.count;
       console.log(`DifferenceMesh: Original: ${origCount}, Healed: ${healedCount} vertices`);
       
-      // Build arrays for faster access
-      const origVerts = [];
-      for (let i = 0; i < origCount; i++) {
-        origVerts.push({
-          x: originalPositions.getX(i),
-          y: originalPositions.getY(i),
-          z: originalPositions.getZ(i)
-        });
-      }
-      
-      const healedVerts = [];
-      for (let i = 0; i < healedCount; i++) {
-        healedVerts.push({
-          x: healedPositions.getX(i),
-          y: healedPositions.getY(i),
-          z: healedPositions.getZ(i)
-        });
-      }
-      
-      // Normalize both point sets
-      const normalize = (verts) => {
-        let cx = 0, cy = 0, cz = 0;
-        for (const v of verts) { cx += v.x; cy += v.y; cz += v.z; }
-        cx /= verts.length; cy /= verts.length; cz /= verts.length;
-        
-        let maxDist = 0;
-        for (const v of verts) {
-          const dx = v.x - cx, dy = v.y - cy, dz = v.z - cz;
-          const d = Math.sqrt(dx*dx + dy*dy + dz*dz);
-          if (d > maxDist) maxDist = d;
+      // Calculate per-vertex displacement distances
+      const distances = [];
+
+      if (origCount === healedCount) {
+        // ── DIRECT CORRESPONDENCE (gradient healing preserves topology) ──
+        // Compute displacement in raw mesh space — NO independent normalization.
+        // Independent normalization was the heatmap bug: both meshes are nearly
+        // identical after unit-sphere normalization, producing tiny uniform
+        // distances (all blue). Direct vertex distance correctly highlights
+        // the aneurysm region where displacement is concentrated.
+        console.log('DifferenceMesh: Same topology — using direct vertex displacement');
+        for (let i = 0; i < origCount; i++) {
+          const dx = originalPositions.getX(i) - healedPositions.getX(i);
+          const dy = originalPositions.getY(i) - healedPositions.getY(i);
+          const dz = originalPositions.getZ(i) - healedPositions.getZ(i);
+          distances.push(Math.sqrt(dx*dx + dy*dy + dz*dz));
         }
-        
-        const normalized = [];
-        for (const v of verts) {
-          normalized.push({
+      } else {
+        // ── NN FALLBACK (CVAE / different-topology outputs) ──
+        console.log('DifferenceMesh: Different vertex counts — using NN matching');
+
+        const origVerts = [];
+        for (let i = 0; i < origCount; i++) {
+          origVerts.push({
+            x: originalPositions.getX(i),
+            y: originalPositions.getY(i),
+            z: originalPositions.getZ(i)
+          });
+        }
+        const healedVerts = [];
+        for (let i = 0; i < healedCount; i++) {
+          healedVerts.push({
+            x: healedPositions.getX(i),
+            y: healedPositions.getY(i),
+            z: healedPositions.getZ(i)
+          });
+        }
+
+        // Normalize both point sets (needed for NN when topologies differ)
+        const normalize = (verts) => {
+          let cx = 0, cy = 0, cz = 0;
+          for (const v of verts) { cx += v.x; cy += v.y; cz += v.z; }
+          cx /= verts.length; cy /= verts.length; cz /= verts.length;
+          let maxDist = 0;
+          for (const v of verts) {
+            const d = Math.sqrt((v.x-cx)**2 + (v.y-cy)**2 + (v.z-cz)**2);
+            if (d > maxDist) maxDist = d;
+          }
+          return verts.map(v => ({
             x: (v.x - cx) / maxDist,
             y: (v.y - cy) / maxDist,
             z: (v.z - cz) / maxDist
-          });
+          }));
+        };
+
+        const origNorm = normalize(origVerts);
+        const healedNorm = normalize(healedVerts);
+
+        // Spatial hash for fast NN lookup
+        const GRID_SIZE = 0.1;
+        const spatialHash = new Map();
+        const getKey = (x, y, z) =>
+          `${Math.floor(x/GRID_SIZE)},${Math.floor(y/GRID_SIZE)},${Math.floor(z/GRID_SIZE)}`;
+
+        for (let i = 0; i < healedNorm.length; i++) {
+          const v = healedNorm[i];
+          const key = getKey(v.x, v.y, v.z);
+          if (!spatialHash.has(key)) spatialHash.set(key, []);
+          spatialHash.get(key).push(v);
         }
-        return normalized;
-      };
-      
-      const origNorm = normalize(origVerts);
-      const healedNorm = normalize(healedVerts);
-      
-      // Build a simple spatial hash for healed vertices (grid-based)
-      const GRID_SIZE = 0.1;
-      const spatialHash = new Map();
-      
-      const getKey = (x, y, z) => {
-        const gx = Math.floor(x / GRID_SIZE);
-        const gy = Math.floor(y / GRID_SIZE);
-        const gz = Math.floor(z / GRID_SIZE);
-        return `${gx},${gy},${gz}`;
-      };
-      
-      for (let i = 0; i < healedNorm.length; i++) {
-        const v = healedNorm[i];
-        const key = getKey(v.x, v.y, v.z);
-        if (!spatialHash.has(key)) {
-          spatialHash.set(key, []);
-        }
-        spatialHash.get(key).push(v);
-      }
-      
-      // Find nearest neighbor using spatial hash
-      const findNearest = (v) => {
-        const gx = Math.floor(v.x / GRID_SIZE);
-        const gy = Math.floor(v.y / GRID_SIZE);
-        const gz = Math.floor(v.z / GRID_SIZE);
-        
-        let minDist = Infinity;
-        
-        // Check neighboring cells (3x3x3 neighborhood)
-        for (let dx = -1; dx <= 1; dx++) {
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dz = -1; dz <= 1; dz++) {
-              const key = `${gx+dx},${gy+dy},${gz+dz}`;
-              const cell = spatialHash.get(key);
-              if (cell) {
-                for (const h of cell) {
-                  const distSq = (v.x - h.x) ** 2 + (v.y - h.y) ** 2 + (v.z - h.z) ** 2;
-                  if (distSq < minDist) minDist = distSq;
+
+        const findNearest = (v) => {
+          const gx = Math.floor(v.x / GRID_SIZE);
+          const gy = Math.floor(v.y / GRID_SIZE);
+          const gz = Math.floor(v.z / GRID_SIZE);
+          let minDist = Infinity;
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dz = -1; dz <= 1; dz++) {
+                const cell = spatialHash.get(`${gx+dx},${gy+dy},${gz+dz}`);
+                if (cell) {
+                  for (const h of cell) {
+                    const distSq = (v.x-h.x)**2 + (v.y-h.y)**2 + (v.z-h.z)**2;
+                    if (distSq < minDist) minDist = distSq;
+                  }
                 }
               }
             }
           }
-        }
-        
-        // If no neighbors found in grid, expand search
-        if (minDist === Infinity) {
-          for (let i = 0; i < healedNorm.length; i++) {
-            const h = healedNorm[i];
-            const distSq = (v.x - h.x) ** 2 + (v.y - h.y) ** 2 + (v.z - h.z) ** 2;
-            if (distSq < minDist) minDist = distSq;
+          if (minDist === Infinity) {
+            for (const h of healedNorm) {
+              const distSq = (v.x-h.x)**2 + (v.y-h.y)**2 + (v.z-h.z)**2;
+              if (distSq < minDist) minDist = distSq;
+            }
           }
+          return Math.sqrt(minDist);
+        };
+
+        for (let i = 0; i < origNorm.length; i++) {
+          distances.push(findNearest(origNorm[i]));
         }
-        
-        return Math.sqrt(minDist);
-      };
-      
-      // Calculate distances for all original vertices
-      const distances = [];
-      for (let i = 0; i < origNorm.length; i++) {
-        distances.push(findNearest(origNorm[i]));
       }
       
       // Get max distance for scaling

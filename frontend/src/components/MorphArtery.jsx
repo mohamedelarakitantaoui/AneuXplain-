@@ -116,40 +116,20 @@ export default function MorphArtery({
       let morphTargetPositions;
       
       if (origCount === healedCount) {
-        // Direct mapping - vertices correspond 1:1
-        console.log('✅ MorphArtery: Direct vertex mapping');
-        
-        // Normalize healed positions to same space as original
-        const healedVerts = [];
-        for (let i = 0; i < healedCount; i++) {
-          healedVerts.push(new THREE.Vector3(
-            healedPositions.getX(i),
-            healedPositions.getY(i),
-            healedPositions.getZ(i)
-          ));
-        }
-        
-        // Compute healed centroid and scale
-        const healedCenter = new THREE.Vector3();
-        for (const v of healedVerts) healedCenter.add(v);
-        healedCenter.divideScalar(healedVerts.length);
-        
-        let maxDist = 0;
-        for (const v of healedVerts) {
-          const d = v.clone().sub(healedCenter).length();
-          if (d > maxDist) maxDist = d;
-        }
-        const healedScale = 2 / maxDist;
-        
-        // Apply normalization
+        // Direct mapping - vertices correspond 1:1 (gradient healing preserves topology)
+        console.log('✅ MorphArtery: Direct vertex mapping (same transform as original)');
+
+        // Apply the SAME center + scale transform used for the original geometry.
+        // Independent normalization would produce a different scale (because the
+        // healed mesh has a slightly smaller bounding extent after the aneurysm
+        // shrinks), causing a "zoom" artifact when morphing.
         morphTargetPositions = new Float32Array(origCount * 3);
         for (let i = 0; i < origCount; i++) {
-          const v = healedVerts[i].clone().sub(healedCenter).multiplyScalar(healedScale);
-          morphTargetPositions[i * 3] = v.x;
-          morphTargetPositions[i * 3 + 1] = v.y;
-          morphTargetPositions[i * 3 + 2] = v.z;
+          morphTargetPositions[i * 3]     = (healedPositions.getX(i) - origTransform.center.x) * origTransform.scale;
+          morphTargetPositions[i * 3 + 1] = (healedPositions.getY(i) - origTransform.center.y) * origTransform.scale;
+          morphTargetPositions[i * 3 + 2] = (healedPositions.getZ(i) - origTransform.center.z) * origTransform.scale;
         }
-        
+
       } else {
         // Different vertex counts - use nearest neighbor matching
         console.log('⚠️ MorphArtery: Using nearest-neighbor correspondence');
