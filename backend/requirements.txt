@@ -12,6 +12,17 @@ scipy>=1.10.0  # For spatial calculations (KDTree)
 
 # 3D Mesh Processing
 trimesh>=4.0.0
+fast-simplification>=0.1.0  # quadric decimation backend for trimesh.simplify_quadric_decimation
+pyvista>=0.43.0
+numpy-stl>=3.1.0
+scikit-image>=0.22.0
+
+# DICOM / Medical Imaging
+pydicom>=2.4.0
+SimpleITK>=2.3.0
+
+# Image encoding (slice previews)
+Pillow>=10.0.0
 
 # API
 python-multipart>=0.0.6  # For file uploads

@@ -21,6 +21,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .engine import CounterfactualEngine
+from .analyze_core import analyze_mesh_file, get_risk_interpretation as _get_risk_interpretation
+from .heatmap_core import compute_heatmap_for_mesh
+from .routes.dicom import router as dicom_router
 
 # Backend-sibling modules (one level up from app/)
 import sys
@@ -133,6 +136,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(dicom_router)
+
 
 # ============================================
 # Response Models
@@ -215,16 +220,7 @@ async def save_upload_to_temp(upload: UploadFile) -> str:
         raise e
 
 
-def get_risk_interpretation(risk_score: float) -> tuple:
-    """Get risk level and interpretation from score."""
-    if risk_score < 0.3:
-        return "LOW", "This artery appears healthy with low aneurysm risk."
-    elif risk_score < 0.5:
-        return "MODERATE", "This artery shows some concerning features. Monitoring recommended."
-    elif risk_score < 0.7:
-        return "HIGH", "This artery shows significant risk factors. Medical consultation advised."
-    else:
-        return "CRITICAL", "This artery shows very high risk indicators. Immediate medical attention recommended."
+get_risk_interpretation = _get_risk_interpretation
 
 
 ALLOWED_MESH_EXTENSIONS = {".obj", ".ply", ".stl", ".off"}
@@ -298,30 +294,10 @@ async def analyze_artery(file: UploadFile = File(...)):
     temp_path = None
     try:
         temp_path = await save_upload_to_temp(file)
-
-        # --- Risk prediction (core — must succeed) ---
-        risk_score = engine.predict_risk(temp_path)
-        risk_level, interpretation = get_risk_interpretation(risk_score)
-
-        # --- Morphology + clinical report (best-effort) ---
-        morphology_data = None
-        clinical_report_data = None
-        try:
-            morph_result = morphology_analyzer.analyze(temp_path)
-            morphology_data = morph_result
-            clinical_report_data = clinical_explainer.explain(
-                morph_result, risk_score, include_spatial=True
-            )
-        except Exception as morph_err:
-            logger.warning("Morphology analysis failed: %s", morph_err, exc_info=True)
-
-        return RiskResponse(
-            risk_score=round(risk_score, 4),
-            risk_level=risk_level,
-            interpretation=interpretation,
-            morphology=morphology_data,
-            clinical_report=clinical_report_data,
+        result = analyze_mesh_file(
+            temp_path, engine, morphology_analyzer, clinical_explainer
         )
+        return RiskResponse(**result)
 
     except HTTPException:
         raise
@@ -417,50 +393,8 @@ async def gradient_heatmap(file: UploadFile = File(...)):
     temp_path = None
     try:
         temp_path = await save_upload_to_temp(file)
-
-        # Load and preprocess (same pipeline as predict_risk)
-        points = engine._load_mesh_as_points(temp_path)
-        tensor = torch.tensor(points, dtype=torch.float32).unsqueeze(0)
-        tensor = tensor.transpose(2, 1)  # (1, 3, N)
-        tensor = tensor.to(engine.device)
-        tensor.requires_grad_(True)
-
-        # Forward pass — backprop from LOGIT to avoid sigmoid saturation
-        # (high-confidence predictions would otherwise have near-zero gradients)
-        assert engine.risk_predictor is not None
-        if engine.is_v2_model:
-            logit = engine.risk_predictor(tensor, return_logits=True)
-            risk_score = torch.sigmoid(logit).item()
-        else:
-            logit = engine.risk_predictor(tensor)
-            risk_score = logit.item()
-
-        logit.backward()
-        assert tensor.grad is not None, "Gradient computation failed"
-        grad = tensor.grad  # (1, 3, N)
-
-        # Per-point gradient magnitude: ||grad_i|| for each of N points
-        grad_mag = torch.norm(grad.squeeze(0), dim=0)  # (N,)
-        grad_mag_np = grad_mag.detach().cpu().numpy()
-
-        # Log raw gradient stats for calibration diagnostics
-        logger.info(
-            "Heatmap grads (logit-space): min=%.6f max=%.6f mean=%.6f p95=%.6f | risk=%.4f",
-            grad_mag_np.min(), grad_mag_np.max(),
-            grad_mag_np.mean(), float(np.percentile(grad_mag_np, 95)),
-            risk_score,
-        )
-
-        # Global normalization: divide by calibrated reference, clip to [0,1].
-        # Then scale by risk_score so low-risk meshes appear cool (blue) and
-        # high-risk meshes retain their hot spots.
-        heatmap_np = np.clip(grad_mag_np / HEATMAP_GLOBAL_REF, 0.0, 1.0) * risk_score
-        heatmap = heatmap_np.tolist()
-
-        return HeatmapResponse(
-            heatmap=heatmap,
-            risk_score=round(risk_score, 4),
-        )
+        result = compute_heatmap_for_mesh(temp_path, engine)
+        return HeatmapResponse(**result)
 
     except HTTPException:
         raise
