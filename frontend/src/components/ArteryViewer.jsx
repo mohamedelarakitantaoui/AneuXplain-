@@ -42,24 +42,6 @@ function computeMeshTransforms(obj) {
   return { center, scale };
 }
 
-/**
- * Apply shared centering + scale to a cloned OBJ group.
- * Must use the SAME transforms for ClickableModel and HeatmapMesh
- * so they align perfectly and the camera never jumps.
- */
-function applyMeshTransforms(obj, transforms) {
-  // Three.js applies: worldPos = (localPos * scale) + position
-  // To centre a vertex at `center` to origin: position = -center * scale
-  const s = transforms.scale;
-  obj.scale.setScalar(s);
-  obj.position.set(
-    -transforms.center.x * s,
-    -transforms.center.y * s,
-    -transforms.center.z * s,
-  );
-}
-
-
 // ============================================
 // CAMERA CONTROLLER — auto-frame on load, reset on demand
 // ============================================
@@ -84,20 +66,37 @@ function CameraController({ transforms, resetKey, controlsRef }) {
     pendingFrameRef.current = true;
   }, [transforms, resetKey]);
 
+  // Re-frame if canvas resizes (e.g. layout shift after mount)
+  useEffect(() => {
+    const canvas = gl.domElement;
+    if (!canvas || !transforms) return;
+    const observer = new ResizeObserver(() => {
+      pendingFrameRef.current = true;
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [gl, transforms]);
+
   useFrame(() => {
     if (!pendingFrameRef.current) return;
+
+    const viewHeight = gl.domElement.clientHeight;
+    const viewWidth = gl.domElement.clientWidth;
+
+    // Canvas not laid out yet — retry next frame
+    if (viewHeight < 100 || viewWidth < 100) return;
+
     pendingFrameRef.current = false;
 
     // Mesh is scaled to fit in a 2-unit box centered at origin
     const meshCenter = new THREE.Vector3(0, 0, 0);
 
     // For orthographic camera: set zoom so the 2-unit box fills ~70% of viewport
-    const aspect = gl.domElement.clientWidth / gl.domElement.clientHeight;
+    const aspect = viewWidth / viewHeight;
     const fitH = 2 / 0.7;
     const fitV = 2 / 0.7;
     const fitSize = Math.max(fitH, fitV / aspect);
 
-    const viewHeight = gl.domElement.clientHeight;
     const newZoom = viewHeight / fitSize;
 
     camera.zoom = Math.max(newZoom, 50);
@@ -432,12 +431,13 @@ function normalizeHeatmapData(rawData) {
 }
 
 /**
- * HeatmapMesh — always mounted, uses shared transforms, toggled via `visible`.
+ * HeatmapMesh — always mounted, toggled via `visible`.
+ * Transforms are applied by the parent <group>, not here.
  */
-function HeatmapMesh({ url, heatmapData, clippingPlanes = [], transforms, visible }) {
+function HeatmapMesh({ url, heatmapData, clippingPlanes = [], visible }) {
   const obj = useLoader(OBJLoader, url);
   const meshRef = useRef();
-  const initializedRef = useRef(false);
+  const colorsAppliedRef = useRef(false);
 
   const clonedObj = useMemo(() => obj.clone(true), [obj]);
 
@@ -446,16 +446,11 @@ function HeatmapMesh({ url, heatmapData, clippingPlanes = [], transforms, visibl
     return normalizeHeatmapData(heatmapData);
   }, [heatmapData]);
 
-  // One-time: apply shared transforms
-  useEffect(() => {
-    if (!clonedObj || !transforms || initializedRef.current) return;
-    initializedRef.current = true;
-    applyMeshTransforms(clonedObj, transforms);
-  }, [clonedObj, transforms]);
-
   // Apply heatmap colors when data arrives
   useEffect(() => {
-    if (!clonedObj || !normalizedHeatmap || normalizedHeatmap.length === 0 || !initializedRef.current) return;
+    if (!clonedObj || !normalizedHeatmap || normalizedHeatmap.length === 0) return;
+    if (colorsAppliedRef.current) return;
+    colorsAppliedRef.current = true;
 
     clonedObj.traverse((child) => {
       if (!child.isMesh) return;
@@ -631,7 +626,6 @@ function ClickableModel({
   isMeasuring = false,
   onMeasureClick,
   objRef,
-  transforms,
 }) {
   const obj = useLoader(OBJLoader, url);
   const meshRef = useRef();
@@ -641,22 +635,10 @@ function ClickableModel({
   const meshesRef = useRef([]);
   const initializedRef = useRef(false);
 
-  // One-time geometry setup using shared transforms
+  // One-time material setup (transforms are applied by parent <group>)
   useEffect(() => {
-    if (!clonedObj || !transforms || initializedRef.current) return;
+    if (!clonedObj || initializedRef.current) return;
     initializedRef.current = true;
-
-    applyMeshTransforms(clonedObj, transforms);
-
-    // Verify the mesh is now centred at origin
-    const postBox = new THREE.Box3().setFromObject(clonedObj);
-    console.log('[ClickableModel] After transforms applied:', {
-      position: clonedObj.position.toArray().map(v => v.toFixed(2)),
-      scale: clonedObj.scale.toArray().map(v => v.toFixed(4)),
-      postBoundsMin: postBox.min.toArray().map(v => v.toFixed(2)),
-      postBoundsMax: postBox.max.toArray().map(v => v.toFixed(2)),
-      postCenter: postBox.getCenter(new THREE.Vector3()).toArray().map(v => v.toFixed(2)),
-    });
 
     meshesRef.current = [];
 
@@ -682,7 +664,7 @@ function ClickableModel({
     });
 
     if (objRef) objRef.current = clonedObj;
-  }, [clonedObj, transforms]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clonedObj]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Material-only updates — never touches geometry or camera
   useEffect(() => {
@@ -863,6 +845,7 @@ const ArteryViewer = forwardRef(function ArteryViewer({
       style={{ background: 'linear-gradient(135deg, #0F1117 0%, #141821 100%)' }}>
       <Canvas
         shadows
+        style={{ width: '100%', height: '100%' }}
         gl={{
           antialias: true,
           alpha: true,
@@ -928,9 +911,16 @@ const ArteryViewer = forwardRef(function ArteryViewer({
 
         <ClippingPlaneHelper clippingY={clippingY} visible={clippingY < 2} />
 
-        {/* BOTH meshes always mounted — visibility toggled, never unmounted */}
+        {/* Shared transform group — both meshes inherit identical centering + scale */}
         {meshTransforms && (
-          <>
+          <group
+            scale={[meshTransforms.scale, meshTransforms.scale, meshTransforms.scale]}
+            position={[
+              -meshTransforms.center.x * meshTransforms.scale,
+              -meshTransforms.center.y * meshTransforms.scale,
+              -meshTransforms.center.z * meshTransforms.scale,
+            ]}
+          >
             <ClickableModel
               url={originalObjUrl}
               color="#67B8D6"
@@ -941,7 +931,6 @@ const ArteryViewer = forwardRef(function ArteryViewer({
               isMeasuring={isMeasuring}
               onMeasureClick={handleMeasureClick}
               objRef={loadedObjRef}
-              transforms={meshTransforms}
             />
 
             <Suspense fallback={null}>
@@ -949,11 +938,10 @@ const ArteryViewer = forwardRef(function ArteryViewer({
                 url={originalObjUrl}
                 heatmapData={heatmapData}
                 clippingPlanes={clippingPlanes}
-                transforms={meshTransforms}
                 visible={showHeatmap}
               />
             </Suspense>
-          </>
+          </group>
         )}
 
         {/* Measurement Highlight Overlay */}
