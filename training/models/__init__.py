@@ -18,7 +18,9 @@ from .datasets import (
     PointCloudDataset,
     MultiSourceDataset,
     LabeledArteryDataset,
-    BalancedArteryDataset
+    BalancedArteryDataset,
+    AugmentedSubset,
+    augment_points,
 )
 
 __all__ = [
@@ -35,4 +37,6 @@ __all__ = [
     "MultiSourceDataset",
     "LabeledArteryDataset",
     "BalancedArteryDataset",
+    "AugmentedSubset",
+    "augment_points",
 ]
