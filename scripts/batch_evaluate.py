@@ -215,6 +215,12 @@ def resolve_click_point(
     - patients: stored lesion centroid if strictly inside mesh_bounds
                 ("lesion_centroid"), else mesh center
                 ("mesh_center_fallback_patient")
+
+    Note: process_subject() may additionally set click_point_source to
+    "mesh_center_fallback_empty_crop" at runtime if the first
+    crop-and-analyze attempt (with click_source == "lesion_centroid")
+    returns the backend's "Crop too small" error and is retried with
+    mesh_center.
     """
     center: list[float] | None = None
     if isinstance(mesh_bounds, list) and len(mesh_bounds) == 2:
@@ -415,7 +421,48 @@ def process_subject(
             )
 
         stage = "analyze"
-        analyze_resp, analyze_ms = crop_and_analyze(session_id, click_point)
+        # First attempt. If the backend rejects the crop as empty
+        # ("Crop too small") AND we used the lesion centroid, retry ONCE
+        # with mesh_center. Any other HTTPError, or an empty-crop retry
+        # when we already used mesh_center, propagates to the outer
+        # handler and marks the subject analyze_failed as before.
+        try:
+            analyze_resp, analyze_ms = crop_and_analyze(session_id, click_point)
+        except requests.HTTPError as first_err:
+            body = ""
+            if first_err.response is not None:
+                body = first_err.response.text or ""
+            if "Crop too small" in body and click_source == "lesion_centroid":
+                mesh_center: list[float] | None = None
+                if isinstance(mesh_bounds, list) and len(mesh_bounds) == 2:
+                    try:
+                        xmin, ymin, zmin = (float(mesh_bounds[0][0]),
+                                            float(mesh_bounds[0][1]),
+                                            float(mesh_bounds[0][2]))
+                        xmax, ymax, zmax = (float(mesh_bounds[1][0]),
+                                            float(mesh_bounds[1][1]),
+                                            float(mesh_bounds[1][2]))
+                        mesh_center = [(xmin + xmax) / 2.0,
+                                       (ymin + ymax) / 2.0,
+                                       (zmin + zmax) / 2.0]
+                    except (TypeError, ValueError, IndexError):
+                        mesh_center = None
+                if mesh_center is None:
+                    raise
+                logger.info(
+                    "%s lesion_centroid crop empty; retrying with "
+                    "mesh_center=[%.3f, %.3f, %.3f]",
+                    subject_id, mesh_center[0], mesh_center[1], mesh_center[2],
+                )
+                click_point = mesh_center
+                click_source = "mesh_center_fallback_empty_crop"
+                row["click_point_source"] = click_source
+                row["click_point_x"] = f"{click_point[0]:.6f}"
+                row["click_point_y"] = f"{click_point[1]:.6f}"
+                row["click_point_z"] = f"{click_point[2]:.6f}"
+                analyze_resp, analyze_ms = crop_and_analyze(session_id, click_point)
+            else:
+                raise
         row["analyze_ms"] = f"{analyze_ms:.1f}"
 
         # Persist the raw response. errors="replace" tolerates mangled UTF-8
