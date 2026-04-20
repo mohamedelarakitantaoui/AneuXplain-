@@ -27,7 +27,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
+from torch.utils.data import DataLoader, Subset
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import roc_auc_score
@@ -103,24 +103,17 @@ def train_risk_predictor(config: dict):
     val_subset = Subset(base_dataset, splits['val_indices'])
     test_subset = Subset(base_dataset, splits['test_indices'])
 
-    # Weighted sampler for class imbalance (50/50 batches)
+    # Class imbalance is handled solely by BCE pos_weight below.
+    # WeightedRandomSampler was removed: combining it with pos_weight caused
+    # double class correction (probability compression near 0.5).
     train_labels = [base_dataset.samples[i]['score'] for i in splits['train_indices']]
     train_binary = [1 if s >= 0.5 else 0 for s in train_labels]
-
     class_counts = [train_binary.count(0), train_binary.count(1)]
-    class_weights = [1.0 / c if c > 0 else 1.0 for c in class_counts]
-    sample_weights = [class_weights[l] for l in train_binary]
-
-    sampler = WeightedRandomSampler(
-        weights=sample_weights,
-        num_samples=len(sample_weights),
-        replacement=True
-    )
 
     train_loader = DataLoader(
         train_subset,
         batch_size=config['batch_size'],
-        sampler=sampler,
+        shuffle=True,
         num_workers=0
     )
     val_loader = DataLoader(
@@ -364,9 +357,9 @@ if __name__ == "__main__":
         'num_points': 2048,
         'latent_dim': 128,
         'batch_size': 16,
-        'learning_rate': 0.0005,
+        'learning_rate': 0.0002,
         'epochs': 80,
-        'patience': 15,
+        'patience': 25,
     }
 
     train_risk_predictor(config)
