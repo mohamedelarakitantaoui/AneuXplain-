@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1040 520" width="1040" height="520"
+     font-family="'Segoe UI', Arial, sans-serif">
+
+  <!-- ── Definitions ── -->
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="gDicom"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#1D4ED8"/></linearGradient>
+    <linearGradient id="gSeg"   x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0E7490"/></linearGradient>
+    <linearGradient id="gRisk"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EF4444"/><stop offset="100%" stop-color="#B91C1C"/></linearGradient>
+    <linearGradient id="gHeat"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#B45309"/></linearGradient>
+    <linearGradient id="gMorph" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10B981"/><stop offset="100%" stop-color="#065F46"/></linearGradient>
+    <linearGradient id="gRpt"   x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#5B21B6"/></linearGradient>
+    <linearGradient id="gBg"    x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F0F4FF"/><stop offset="100%" stop-color="#E8EDF8"/></linearGradient>
+    <!-- Arrow marker -->
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9 Z" fill="#64748B"/>
+    </marker>
+    <!-- Drop shadow -->
+    <filter id="shadow">
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-color="#00000020"/>
+    </filter>
+  </defs>
+
+  <!-- ── Background ── -->
+  <rect width="1040" height="520" fill="url(#gBg)" rx="14"/>
+  <rect x="1" y="1" width="1038" height="518" rx="14" fill="none" stroke="#CBD5E1" stroke-width="1.5"/>
+
+  <!-- ── Title ── -->
+  <text x="520" y="36" text-anchor="middle" font-size="17.5" font-weight="700" fill="#0F172A" letter-spacing="0.3">
+    AneuXplain — System Architecture Overview
+  </text>
+  <line x1="80" y1="48" x2="960" y2="48" stroke="#CBD5E1" stroke-width="1.2"/>
+
+  <!-- ════════════════════════════════════════════════════════════
+       HELPER: reusable box macro via separate rects + text
+       ════════════════════════════════════════════════════════════ -->
+
+  <!-- ─── BOX 1: DICOM Input  (x=55, y=200, w=138, h=90) ─── -->
+  <rect x="58" y="204" width="138" height="90" rx="11" fill="#00000018" />
+  <rect x="55" y="200" width="138" height="90" rx="11" fill="url(#gDicom)" stroke="#2563EB" stroke-width="2" filter="url(#shadow)"/>
+  <text x="124" y="225" text-anchor="middle" font-size="9"   fill="#BFDBFE" font-weight="700" letter-spacing="1.2">STAGE 1</text>
+  <text x="124" y="255" text-anchor="middle" font-size="22"  fill="#ffffff">🏥</text>
+  <text x="124" y="277" text-anchor="middle" font-size="12"  fill="#ffffff" font-weight="700">DICOM Input</text>
+
+  <!-- ─── ARROW 1→2 ─── -->
+  <line x1="194" y1="245" x2="230" y2="245" stroke="#64748B" stroke-width="2.2" marker-end="url(#arr)"/>
+  <!-- label -->
+  <rect x="195" y="231" width="34" height="13" rx="4" fill="#E2E8F0"/>
+  <text x="212" y="241" text-anchor="middle" font-size="8" fill="#475569" font-weight="600">NIfTI</text>
+
+  <!-- ─── BOX 2: Segmentation  (x=232, y=200, w=155, h=90) ─── -->
+  <rect x="235" y="204" width="155" height="90" rx="11" fill="#00000018"/>
+  <rect x="232" y="200" width="155" height="90" rx="11" fill="url(#gSeg)" stroke="#0891B2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="309" y="225" text-anchor="middle" font-size="9"   fill="#A5F3FC" font-weight="700" letter-spacing="1.2">STAGE 2</text>
+  <text x="309" y="255" text-anchor="middle" font-size="22"  fill="#ffffff">🔬</text>
+  <text x="309" y="277" text-anchor="middle" font-size="12"  fill="#ffffff" font-weight="700">3-D Segmentation</text>
+
+  <!-- ─── TRUNK LINE from seg ─── -->
+  <line x1="388" y1="245" x2="435" y2="245" stroke="#64748B" stroke-width="2.2"/>
+  <!-- label on trunk -->
+  <rect x="388" y="231" width="46" height="13" rx="4" fill="#E2E8F0"/>
+  <text x="411" y="241" text-anchor="middle" font-size="8" fill="#475569" font-weight="600">Point Cloud</text>
+
+  <!-- Vertical spine connecting the 3 branches -->
+  <line x1="435" y1="115" x2="435" y2="375" stroke="#94A3B8" stroke-width="1.8"/>
+
+  <!-- Branch lines to 3 modules -->
+  <line x1="435" y1="115" x2="474" y2="115" stroke="#64748B" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="435" y1="245" x2="474" y2="245" stroke="#64748B" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="435" y1="375" x2="474" y2="375" stroke="#64748B" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- "Parallel Modules" badge -->
+  <rect x="388" y="62" width="96" height="22" rx="6" fill="#1E3A5F" opacity="0.9"/>
+  <text x="436" y="77" text-anchor="middle" font-size="9" fill="#E0F2FE" font-weight="700" letter-spacing="0.8">PARALLEL MODULES</text>
+  <line x1="436" y1="84" x2="436" y2="115" stroke="#94A3B8" stroke-width="1.2" stroke-dasharray="4,3"/>
+
+  <!-- ─── MODULE A: Risk Predictor  (x=476, y=75, w=185, h=80) ─── -->
+  <rect x="479" y="78" width="185" height="80" rx="11" fill="#00000018"/>
+  <rect x="476" y="75" width="185" height="80" rx="11" fill="url(#gRisk)" stroke="#DC2626" stroke-width="2" filter="url(#shadow)"/>
+  <text x="568" y="97"  text-anchor="middle" font-size="9"   fill="#FECACA" font-weight="700" letter-spacing="1.2">MODULE A</text>
+  <text x="568" y="122" text-anchor="middle" font-size="22"  fill="#ffffff">⚠️</text>
+  <text x="568" y="143" text-anchor="middle" font-size="12"  fill="#ffffff" font-weight="700">Risk Predictor</text>
+  <text x="568" y="156" text-anchor="middle" font-size="8.5" fill="#FCA5A5">GNN · BCE Loss · Probability Score</text>
+
+  <!-- ─── MODULE B: Saliency Heatmap  (x=476, y=205, w=185, h=80) ─── -->
+  <rect x="479" y="208" width="185" height="80" rx="11" fill="#00000018"/>
+  <rect x="476" y="205" width="185" height="80" rx="11" fill="url(#gHeat)" stroke="#D97706" stroke-width="2" filter="url(#shadow)"/>
+  <text x="568" y="227" text-anchor="middle" font-size="9"   fill="#FDE68A" font-weight="700" letter-spacing="1.2">MODULE B</text>
+  <text x="568" y="252" text-anchor="middle" font-size="22"  fill="#ffffff">🌡️</text>
+  <text x="568" y="273" text-anchor="middle" font-size="12"  fill="#ffffff" font-weight="700">Saliency Heatmap</text>
+  <text x="568" y="286" text-anchor="middle" font-size="8.5" fill="#FDE68A">Grad-CAM · XAI · 3-D Overlay</text>
+
+  <!-- ─── MODULE C: Morphology Analyzer  (x=476, y=335, w=185, h=80) ─── -->
+  <rect x="479" y="338" width="185" height="80" rx="11" fill="#00000018"/>
+  <rect x="476" y="335" width="185" height="80" rx="11" fill="url(#gMorph)" stroke="#059669" stroke-width="2" filter="url(#shadow)"/>
+  <text x="568" y="357" text-anchor="middle" font-size="9"   fill="#A7F3D0" font-weight="700" letter-spacing="1.2">MODULE C</text>
+  <text x="568" y="382" text-anchor="middle" font-size="22"  fill="#ffffff">📐</text>
+  <text x="568" y="403" text-anchor="middle" font-size="12"  fill="#ffffff" font-weight="700">Morphology Analyzer</text>
+  <text x="568" y="416" text-anchor="middle" font-size="8.5" fill="#A7F3D0">Curvature · Volume · Neck Ratio</text>
+
+  <!-- ─── Merge lines ─── -->
+  <line x1="662" y1="115" x2="720" y2="115" stroke="#94A3B8" stroke-width="1.8"/>
+  <line x1="662" y1="245" x2="720" y2="245" stroke="#94A3B8" stroke-width="1.8"/>
+  <line x1="662" y1="375" x2="720" y2="375" stroke="#94A3B8" stroke-width="1.8"/>
+  <!-- Vertical merge spine -->
+  <line x1="720" y1="115" x2="720" y2="375" stroke="#94A3B8" stroke-width="1.8"/>
+  <!-- Horizontal to report -->
+  <line x1="720" y1="245" x2="758" y2="245" stroke="#64748B" stroke-width="2.2" marker-end="url(#arr)"/>
+  <!-- Fusion label -->
+  <rect x="720" y="231" width="38" height="13" rx="4" fill="#E2E8F0"/>
+  <text x="739" y="241" text-anchor="middle" font-size="8" fill="#475569" font-weight="600">Fusion</text>
+
+  <!-- ─── BOX 4: Clinical Report  (x=760, y=200, w=210, h=90) ─── -->
+  <rect x="763" y="204" width="210" height="90" rx="11" fill="#00000018"/>
+  <rect x="760" y="200" width="210" height="90" rx="11" fill="url(#gRpt)" stroke="#7C3AED" stroke-width="2" filter="url(#shadow)"/>
+  <text x="865" y="225" text-anchor="middle" font-size="9"   fill="#DDD6FE" font-weight="700" letter-spacing="1.2">OUTPUT</text>
+  <text x="865" y="255" text-anchor="middle" font-size="22"  fill="#ffffff">📋</text>
+  <text x="865" y="277" text-anchor="middle" font-size="12"  fill="#ffffff" font-weight="700">Clinical Report</text>
+
+  <!-- ── Step numbers (top labels) ── -->
+  <g font-size="9.5" fill="#475569" text-anchor="middle">
+    <text x="124" y="193">① Input</text>
+    <text x="309" y="193">② Preprocess</text>
+    <text x="865" y="193">④ Output</text>
+  </g>
+  <text x="568" y="65" text-anchor="middle" font-size="9.5" fill="#475569">③ Analysis</text>
+
+  <!-- ══════════════════════════════════════════════════════
+       LEGEND BAR
+       ══════════════════════════════════════════════════════ -->
+  <rect x="55" y="448" width="930" height="52" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2"/>
+
+  <!-- Legend title -->
+  <text x="520" y="464" text-anchor="middle" font-size="9" fill="#94A3B8" font-weight="600" letter-spacing="1">MODULE LEGEND</text>
+
+  <!-- Items -->
+  <rect x="72"  y="469" width="12" height="12" rx="2" fill="url(#gDicom)"/>
+  <text x="90"  y="480" font-size="9" fill="#334155">DICOM Acquisition</text>
+
+  <rect x="210" y="469" width="12" height="12" rx="2" fill="url(#gSeg)"/>
+  <text x="228" y="480" font-size="9" fill="#334155">Segmentation Pipeline</text>
+
+  <rect x="375" y="469" width="12" height="12" rx="2" fill="url(#gRisk)"/>
+  <text x="393" y="480" font-size="9" fill="#334155">Risk Classifier (GNN)</text>
+
+  <rect x="540" y="469" width="12" height="12" rx="2" fill="url(#gHeat)"/>
+  <text x="558" y="480" font-size="9" fill="#334155">XAI Saliency Heatmap</text>
+
+  <rect x="710" y="469" width="12" height="12" rx="2" fill="url(#gMorph)"/>
+  <text x="728" y="480" font-size="9" fill="#334155">Morphological Features</text>
+
+  <rect x="875" y="469" width="12" height="12" rx="2" fill="url(#gRpt)"/>
+  <text x="893" y="480" font-size="9" fill="#334155">Clinical Report</text>
+
+  <!-- ── Caption ── -->
+  <text x="520" y="508" text-anchor="middle" font-size="9" fill="#94A3B8" font-style="italic">
+    Figure 1 — Three-module architecture of the AneuXplain system: DICOM input → segmentation → three parallel modules (risk predictor, heatmap, morphology) → clinical report.
+  </text>
+
+</svg>
