@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 580" width="1100" height="580"
+     font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+
+  <defs>
+    <!-- ── Background gradient ── -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#0D1B2A"/>
+      <stop offset="50%"  stop-color="#0F2744"/>
+      <stop offset="100%" stop-color="#0D1B2A"/>
+    </linearGradient>
+
+    <!-- ── Box gradients ── -->
+    <linearGradient id="gIn"   x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#1E40AF"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient>
+    <linearGradient id="gSeg"  x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0891B2"/><stop offset="100%" stop-color="#075985"/></linearGradient>
+    <linearGradient id="gRisk" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#DC2626"/><stop offset="100%" stop-color="#7F1D1D"/></linearGradient>
+    <linearGradient id="gHeat" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#D97706"/><stop offset="100%" stop-color="#78350F"/></linearGradient>
+    <linearGradient id="gMorp" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#064E3B"/></linearGradient>
+    <linearGradient id="gRpt"  x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#4C1D95"/></linearGradient>
+
+    <!-- ── Glows ── -->
+    <filter id="glowBlue"  x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glowRed"   x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glowAmber" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glowGreen" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="softShadow"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.5"/></filter>
+    <filter id="titleGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+
+    <!-- ── Arrow marker ── -->
+    <marker id="arrowW" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9 Z" fill="#94A3B8"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M1,1 L9,5 L1,9 Z" fill="#38BDF8"/>
+    </marker>
+
+    <!-- ── Clip ── -->
+    <clipPath id="bgClip"><rect width="1100" height="580" rx="18"/></clipPath>
+  </defs>
+
+  <!-- ══════════════════════ BACKGROUND ══════════════════════ -->
+  <rect width="1100" height="580" fill="url(#bgGrad)" rx="18"/>
+
+  <!-- Subtle grid lines -->
+  <g stroke="#FFFFFF06" stroke-width="1">
+    <line x1="0" y1="100" x2="1100" y2="100"/>
+    <line x1="0" y1="200" x2="1100" y2="200"/>
+    <line x1="0" y1="300" x2="1100" y2="300"/>
+    <line x1="0" y1="400" x2="1100" y2="400"/>
+    <line x1="0" y1="500" x2="1100" y2="500"/>
+    <line x1="200" y1="0" x2="200" y2="580"/>
+    <line x1="400" y1="0" x2="400" y2="580"/>
+    <line x1="600" y1="0" x2="600" y2="580"/>
+    <line x1="800" y1="0" x2="800" y2="580"/>
+    <line x1="1000" y1="0" x2="1000" y2="580"/>
+  </g>
+
+  <!-- Decorative corner circles -->
+  <circle cx="0"    cy="0"   r="180" fill="#FFFFFF04"/>
+  <circle cx="1100" cy="580" r="220" fill="#FFFFFF03"/>
+  <circle cx="1100" cy="0"   r="120" fill="#38BDF808"/>
+
+  <!-- ══════════════════════ TITLE ══════════════════════ -->
+  <text x="550" y="46" text-anchor="middle" font-size="22" font-weight="700"
+        fill="#F8FAFC" letter-spacing="1" filter="url(#titleGlow)">
+    AneuXplain — System Architecture
+  </text>
+  <text x="550" y="65" text-anchor="middle" font-size="11" fill="#64748B" letter-spacing="2">
+    DICOM ACQUISITION  ·  3-D SEGMENTATION  ·  PARALLEL ANALYSIS  ·  CLINICAL OUTPUT
+  </text>
+  <!-- Title underline -->
+  <line x1="340" y1="74" x2="760" y2="74" stroke="#1D4ED8" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STAGE 1 — DICOM INPUT
+       ══════════════════════════════════════════════════════════ -->
+  <!-- Outer glow ring -->
+  <rect x="38" y="188" width="150" height="170" rx="14" fill="#1E40AF" opacity="0.12" filter="url(#glowBlue)"/>
+  <!-- Card -->
+  <rect x="42" y="192" width="146" height="162" rx="12" fill="url(#gIn)" stroke="#3B82F6" stroke-width="1.5" filter="url(#softShadow)"/>
+  <!-- Top accent bar -->
+  <rect x="42" y="192" width="146" height="5" rx="12" fill="#60A5FA"/>
+  <rect x="42" y="197" width="146" height="3" fill="#60A5FA" opacity="0.4"/>
+
+  <!-- DICOM icon — stacked slices -->
+  <g transform="translate(115, 248)">
+    <rect x="-22" y="-18" width="44" height="32" rx="4" fill="#FFFFFF10" stroke="#93C5FD" stroke-width="1.2"/>
+    <rect x="-17" y="-12" width="44" height="32" rx="4" fill="#FFFFFF14" stroke="#93C5FD" stroke-width="1"/>
+    <rect x="-12" y="-6"  width="44" height="32" rx="4" fill="#FFFFFF18" stroke="#93C5FD" stroke-width="1"/>
+    <!-- Cross symbol on top slice -->
+    <line x1="-2" y1="4"  x2="22" y2="4"  stroke="#93C5FD" stroke-width="1.5"/>
+    <line x1="10" y1="-4" x2="10" y2="14" stroke="#93C5FD" stroke-width="1.5"/>
+  </g>
+
+  <text x="115" y="310" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">DICOM Input</text>
+  <text x="115" y="327" text-anchor="middle" font-size="9"   fill="#93C5FD">MRI / CT Scan Stack</text>
+  <text x="115" y="206" text-anchor="middle" font-size="8"   fill="#BFDBFE" font-weight="600" letter-spacing="1.5">STAGE 1</text>
+  <!-- Step badge -->
+  <circle cx="62" cy="212" r="9" fill="#3B82F6"/>
+  <text x="62" y="216" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">1</text>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ARROW 1 → 2
+       ══════════════════════════════════════════════════════════ -->
+  <line x1="190" y1="273" x2="228" y2="273" stroke="#38BDF8" stroke-width="2"
+        stroke-dasharray="5,3" marker-end="url(#arrowC)" opacity="0.8"/>
+  <rect x="191" y="260" width="36" height="13" rx="5" fill="#0F172A" stroke="#1E3A5F" stroke-width="1"/>
+  <text x="209" y="270" text-anchor="middle" font-size="7.5" fill="#7DD3FC" font-weight="600">NIfTI / OBJ</text>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STAGE 2 — SEGMENTATION
+       ══════════════════════════════════════════════════════════ -->
+  <rect x="228" y="192" width="156" height="162" rx="12" fill="url(#gSeg)" stroke="#22D3EE" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="228" y="192" width="156" height="5" rx="12" fill="#22D3EE"/>
+  <rect x="228" y="197" width="156" height="3" fill="#22D3EE" opacity="0.4"/>
+
+  <!-- Segmentation icon — mesh polygon -->
+  <g transform="translate(306, 252)" fill="none" stroke="#67E8F9" stroke-width="1.3">
+    <polygon points="0,-24 22,-10 22,10 0,24 -22,10 -22,-10" fill="#22D3EE15"/>
+    <line x1="0" y1="-24" x2="0" y2="24"/>
+    <line x1="-22" y1="-10" x2="22" y2="10"/>
+    <line x1="-22" y1="10" x2="22" y2="-10"/>
+  </g>
+
+  <text x="306" y="310" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">3-D Segmentation</text>
+  <text x="306" y="327" text-anchor="middle" font-size="9"   fill="#67E8F9">Vessel Mesh Extraction</text>
+  <text x="306" y="206" text-anchor="middle" font-size="8"   fill="#A5F3FC" font-weight="600" letter-spacing="1.5">STAGE 2</text>
+  <circle cx="248" cy="212" r="9" fill="#0891B2"/>
+  <text x="248" y="216" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">2</text>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TRUNK + SPLIT
+       ══════════════════════════════════════════════════════════ -->
+  <!-- Trunk from seg -->
+  <line x1="385" y1="273" x2="430" y2="273" stroke="#38BDF8" stroke-width="2" opacity="0.8"/>
+  <rect x="385" y="260" width="46" height="13" rx="5" fill="#0F172A" stroke="#1E3A5F" stroke-width="1"/>
+  <text x="408" y="270" text-anchor="middle" font-size="7.5" fill="#7DD3FC" font-weight="600">Point Cloud</text>
+
+  <!-- Vertical spine -->
+  <line x1="430" y1="137" x2="430" y2="410" stroke="#334155" stroke-width="2"/>
+  <!-- Dots at branch points -->
+  <circle cx="430" cy="147" r="4" fill="#475569"/>
+  <circle cx="430" cy="273" r="4" fill="#475569"/>
+  <circle cx="430" cy="400" r="4" fill="#475569"/>
+
+  <!-- "PARALLEL ANALYSIS" label -->
+  <rect x="381" y="87" width="100" height="20" rx="6" fill="#1E3A5F" stroke="#1D4ED8" stroke-width="1"/>
+  <text x="431" y="101" text-anchor="middle" font-size="8" fill="#7DD3FC" font-weight="700" letter-spacing="1">PARALLEL ANALYSIS</text>
+  <!-- Dashed line from label to spine top -->
+  <line x1="431" y1="107" x2="431" y2="137" stroke="#1D4ED8" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+
+  <!-- Branch lines -->
+  <line x1="430" y1="147" x2="468" y2="147" stroke="#EF4444" stroke-width="2" marker-end="url(#arrowW)" opacity="0.9"/>
+  <line x1="430" y1="273" x2="468" y2="273" stroke="#F59E0B" stroke-width="2" marker-end="url(#arrowW)" opacity="0.9"/>
+  <line x1="430" y1="400" x2="468" y2="400" stroke="#10B981" stroke-width="2" marker-end="url(#arrowW)" opacity="0.9"/>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODULE A — RISK PREDICTOR
+       ══════════════════════════════════════════════════════════ -->
+  <rect x="470" y="102" width="218" height="90" rx="12" fill="url(#gRisk)" stroke="#F87171" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="470" y="102" width="218" height="4" rx="12" fill="#F87171"/>
+
+  <!-- Risk icon — shield with exclamation -->
+  <g transform="translate(510, 148)">
+    <path d="M0,-16 L14,-8 L14,4 C14,12 7,18 0,20 C-7,18 -14,12 -14,4 L-14,-8 Z"
+          fill="#EF444430" stroke="#FCA5A5" stroke-width="1.3"/>
+    <text x="0" y="5" text-anchor="middle" font-size="14" fill="#FCA5A5" font-weight="900">!</text>
+  </g>
+
+  <text x="579" y="127" text-anchor="middle" font-size="8"   fill="#FCA5A5" font-weight="700" letter-spacing="1.5">MODULE A</text>
+  <text x="579" y="152" text-anchor="middle" font-size="13"  fill="#FFFFFF" font-weight="700">Risk Predictor</text>
+  <text x="579" y="168" text-anchor="middle" font-size="8.5" fill="#FCA5A5">Graph Neural Network · BCE Loss · Calibration</text>
+  <text x="579" y="182" text-anchor="middle" font-size="8"   fill="#F87171">Output: Rupture Probability Score</text>
+  <circle cx="490" cy="117" r="9" fill="#DC2626"/>
+  <text x="490" y="121" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">A</text>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODULE B — SALIENCY HEATMAP
+       ══════════════════════════════════════════════════════════ -->
+  <rect x="470" y="228" width="218" height="90" rx="12" fill="url(#gHeat)" stroke="#FCD34D" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="470" y="228" width="218" height="4" rx="12" fill="#FCD34D"/>
+
+  <!-- Heatmap icon — concentric contours -->
+  <g transform="translate(510, 274)" fill="none">
+    <ellipse rx="18" ry="11" fill="#F59E0B30" stroke="#FCD34D" stroke-width="1.2"/>
+    <ellipse rx="12" ry="7"  fill="#F59E0B50" stroke="#FDE68A" stroke-width="1.2"/>
+    <ellipse rx="5"  ry="3"  fill="#F59E0B80" stroke="#FEF3C7" stroke-width="1.2"/>
+    <circle  r="1.5" fill="#FFFFFF"/>
+  </g>
+
+  <text x="579" y="253" text-anchor="middle" font-size="8"   fill="#FDE68A" font-weight="700" letter-spacing="1.5">MODULE B</text>
+  <text x="579" y="278" text-anchor="middle" font-size="13"  fill="#FFFFFF" font-weight="700">Saliency Heatmap</text>
+  <text x="579" y="294" text-anchor="middle" font-size="8.5" fill="#FDE68A">Grad-CAM · XAI Explainability · 3-D Overlay</text>
+  <text x="579" y="308" text-anchor="middle" font-size="8"   fill="#FCD34D">Output: Visual Attention Map on Vessel</text>
+  <circle cx="490" cy="243" r="9" fill="#D97706"/>
+  <text x="490" y="247" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">B</text>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODULE C — MORPHOLOGY ANALYZER
+       ══════════════════════════════════════════════════════════ -->
+  <rect x="470" y="355" width="218" height="90" rx="12" fill="url(#gMorp)" stroke="#34D399" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="470" y="355" width="218" height="4" rx="12" fill="#34D399"/>
+
+  <!-- Morphology icon — ruler / caliper -->
+  <g transform="translate(510, 401)" stroke="#6EE7B7" stroke-width="1.3" fill="none">
+    <rect x="-18" y="-6" width="36" height="12" rx="3" fill="#10B98130"/>
+    <line x1="-18" y1="-12" x2="-18" y2="12"/>
+    <line x1="18"  y1="-12" x2="18"  y2="12"/>
+    <line x1="-9"  y1="-8"  x2="-9"  y2="8"/>
+    <line x1="0"   y1="-10" x2="0"   y2="10"/>
+    <line x1="9"   y1="-8"  x2="9"   y2="8"/>
+  </g>
+
+  <text x="579" y="380" text-anchor="middle" font-size="8"   fill="#A7F3D0" font-weight="700" letter-spacing="1.5">MODULE C</text>
+  <text x="579" y="405" text-anchor="middle" font-size="13"  fill="#FFFFFF" font-weight="700">Morphology Analyzer</text>
+  <text x="579" y="421" text-anchor="middle" font-size="8.5" fill="#A7F3D0">Curvature · Volume · Neck Ratio · Aspect Ratio</text>
+  <text x="579" y="435" text-anchor="middle" font-size="8"   fill="#34D399">Output: Geometric Feature Vector</text>
+  <circle cx="490" cy="370" r="9" fill="#059669"/>
+  <text x="490" y="374" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">C</text>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MERGE LINES
+       ══════════════════════════════════════════════════════════ -->
+  <!-- Right edge merge lines -->
+  <line x1="689" y1="147" x2="730" y2="147" stroke="#EF4444" stroke-width="1.5" opacity="0.7"/>
+  <line x1="689" y1="273" x2="730" y2="273" stroke="#F59E0B" stroke-width="1.5" opacity="0.7"/>
+  <line x1="689" y1="400" x2="730" y2="400" stroke="#10B981" stroke-width="1.5" opacity="0.7"/>
+  <!-- Vertical merge spine -->
+  <line x1="730" y1="147" x2="730" y2="400" stroke="#475569" stroke-width="2"/>
+  <!-- Dots at merge points -->
+  <circle cx="730" cy="147" r="4" fill="#EF4444" opacity="0.8"/>
+  <circle cx="730" cy="273" r="4" fill="#F59E0B" opacity="0.8"/>
+  <circle cx="730" cy="400" r="4" fill="#10B981" opacity="0.8"/>
+  <!-- Final arrow to report -->
+  <line x1="730" y1="273" x2="772" y2="273" stroke="#A78BFA" stroke-width="2.5" marker-end="url(#arrowW)"/>
+  <!-- Fusion label -->
+  <rect x="730" y="258" width="42" height="14" rx="5" fill="#0F172A" stroke="#4C1D95" stroke-width="1"/>
+  <text x="751" y="268" text-anchor="middle" font-size="7.5" fill="#A78BFA" font-weight="600">FUSION</text>
+
+  <!-- ══════════════════════════════════════════════════════════
+       OUTPUT — CLINICAL REPORT
+       ══════════════════════════════════════════════════════════ -->
+  <rect x="775" y="192" width="270" height="162" rx="12" fill="url(#gRpt)" stroke="#A78BFA" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="775" y="192" width="270" height="5" rx="12" fill="#A78BFA"/>
+  <rect x="775" y="197" width="270" height="3" fill="#A78BFA" opacity="0.4"/>
+
+  <!-- Report icon — document lines -->
+  <g transform="translate(826, 252)">
+    <rect x="-20" y="-28" width="40" height="52" rx="4" fill="#7C3AED30" stroke="#C4B5FD" stroke-width="1.3"/>
+    <line x1="-12" y1="-14" x2="12"  y2="-14" stroke="#C4B5FD" stroke-width="1.2"/>
+    <line x1="-12" y1="-6"  x2="12"  y2="-6"  stroke="#C4B5FD" stroke-width="1.2"/>
+    <line x1="-12" y1="2"   x2="12"  y2="2"   stroke="#C4B5FD" stroke-width="1.2"/>
+    <line x1="-12" y1="10"  x2="5"   y2="10"  stroke="#C4B5FD" stroke-width="1.2"/>
+    <!-- Checkmark -->
+    <circle cx="14" cy="18" r="8" fill="#059669"/>
+    <path d="M10,18 L13,21 L18,14" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <text x="910" y="210" text-anchor="middle" font-size="8"   fill="#DDD6FE" font-weight="700" letter-spacing="1.5">OUTPUT — STAGE 4</text>
+  <text x="910" y="310" text-anchor="middle" font-size="15"  fill="#FFFFFF" font-weight="700">Clinical Report</text>
+
+  <!-- Report sub-items with small colored bullets -->
+  <circle cx="810" cy="326" r="3" fill="#F87171"/>
+  <text x="820" y="330" font-size="9" fill="#E2E8F0">Risk Score &amp; Rupture Probability</text>
+  <circle cx="810" cy="342" r="3" fill="#FCD34D"/>
+  <text x="820" y="346" font-size="9" fill="#E2E8F0">Saliency Map (3-D Visualisation)</text>
+  <circle cx="810" cy="358" r="3" fill="#34D399"/>
+  <text x="820" y="362" font-size="9" fill="#E2E8F0">Geometric Measurements</text>
+  <circle cx="810" cy="374" r="3" fill="#A78BFA"/>
+  <text x="820" y="378" font-size="9" fill="#E2E8F0">NLP Clinical Explanation (PDF)</text>
+
+  <circle cx="795" cy="208" r="9" fill="#7C3AED"/>
+  <text x="795" y="212" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">4</text>
+
+  <!-- ══════════════════════════════════════════════════════════
+       BOTTOM LEGEND + CAPTION
+       ══════════════════════════════════════════════════════════ -->
+  <rect x="42" y="480" width="1016" height="50" rx="10" fill="#0F172A" stroke="#1E293B" stroke-width="1.2"/>
+
+  <!-- Legend dots + labels -->
+  <circle cx="90"  cy="505" r="5" fill="#3B82F6"/><text x="102"  y="509" font-size="9" fill="#94A3B8">DICOM Input</text>
+  <circle cx="210" cy="505" r="5" fill="#0891B2"/><text x="222"  y="509" font-size="9" fill="#94A3B8">3-D Segmentation</text>
+  <circle cx="360" cy="505" r="5" fill="#EF4444"/><text x="372"  y="509" font-size="9" fill="#94A3B8">Risk Predictor (GNN)</text>
+  <circle cx="520" cy="505" r="5" fill="#F59E0B"/><text x="532"  y="509" font-size="9" fill="#94A3B8">Saliency Heatmap (XAI)</text>
+  <circle cx="700" cy="505" r="5" fill="#10B981"/><text x="712"  y="509" font-size="9" fill="#94A3B8">Morphology Analyzer</text>
+  <circle cx="865" cy="505" r="5" fill="#8B5CF6"/><text x="877"  y="509" font-size="9" fill="#94A3B8">Clinical Report</text>
+
+  <!-- Divider & caption -->
+  <line x1="42" y1="521" x2="1058" y2="521" stroke="#1E293B" stroke-width="1"/>
+  <text x="550" y="536" text-anchor="middle" font-size="8.5" fill="#475569" font-style="italic">
+    Figure 1 — Three-module architecture of the AneuXplain system (DICOM input → segmentation → three parallel modules: risk predictor, heatmap, morphology → clinical report).
+  </text>
+
+</svg>

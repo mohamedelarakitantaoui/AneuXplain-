@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1000 520" width="1000" height="520" font-family="'Segoe UI', Arial, sans-serif">
+
+  <!-- Background -->
+  <rect width="1000" height="520" fill="#F7F9FC" rx="16"/>
+
+  <!-- Title -->
+  <text x="500" y="38" text-anchor="middle" font-size="17" font-weight="700" fill="#1A2340" letter-spacing="0.5">
+    AneuXplain — Three-Module Processing Architecture
+  </text>
+  <line x1="120" y1="48" x2="880" y2="48" stroke="#C5D0E0" stroke-width="1.2"/>
+
+  <!-- ═══════════════ STAGE 1: DICOM INPUT ═══════════════ -->
+  <!-- Shadow -->
+  <rect x="54" y="196" width="132" height="80" rx="10" fill="#00000018"/>
+  <!-- Box -->
+  <rect x="50" y="192" width="132" height="80" rx="10"
+        fill="url(#gradDicom)" stroke="#2563EB" stroke-width="2"/>
+  <!-- Icon: stack of slices -->
+  <rect x="74" y="207" width="34" height="26" rx="3" fill="#ffffff44"/>
+  <rect x="79" y="213" width="34" height="26" rx="3" fill="#ffffff55"/>
+  <rect x="84" y="219" width="34" height="26" rx="3" fill="#ffffff66"/>
+  <text x="116" y="232" font-size="10.5" fill="#E0EAFF" font-weight="600">MRI/CT</text>
+  <text x="116" y="245" font-size="10" fill="#BDD4FF">DICOM</text>
+  <text x="116" y="257" font-size="9.5" fill="#BDD4FF">Stack</text>
+  <text x="116" y="252" font-size="11.5" font-weight="700" fill="#ffffff" text-anchor="middle">DICOM</text>
+  <!-- Label -->
+  <text x="116" y="209" text-anchor="middle" font-size="9" fill="#BDD4FF" font-weight="600" letter-spacing="1">INPUT</text>
+  <!-- Reset label area -->
+  <rect x="50" y="192" width="132" height="80" rx="10" fill="url(#gradDicom)" stroke="#2563EB" stroke-width="2"/>
+  <text x="116" y="221" text-anchor="middle" font-size="9.5" fill="#BDD4FF" font-weight="600" letter-spacing="1">STAGE 1</text>
+  <text x="116" y="240" text-anchor="middle" font-size="16" fill="#ffffff">🏥</text>
+  <text x="116" y="260" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">DICOM Input</text>
+
+  <!-- ═══════════════ ARROW 1 → 2 ═══════════════ -->
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L0,9 L9,4.5 Z" fill="#475569"/>
+    </marker>
+    <linearGradient id="gradDicom" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563EB"/>
+      <stop offset="100%" style="stop-color:#1e40af"/>
+    </linearGradient>
+    <linearGradient id="gradSeg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891B2"/>
+      <stop offset="100%" style="stop-color:#0e7490"/>
+    </linearGradient>
+    <linearGradient id="gradRisk" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#DC2626"/>
+      <stop offset="100%" style="stop-color:#991b1b"/>
+    </linearGradient>
+    <linearGradient id="gradHeat" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#D97706"/>
+      <stop offset="100%" style="stop-color:#92400e"/>
+    </linearGradient>
+    <linearGradient id="gradMorph" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669"/>
+      <stop offset="100%" style="stop-color:#065f46"/>
+    </linearGradient>
+    <linearGradient id="gradReport" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3AED"/>
+      <stop offset="100%" style="stop-color:#4c1d95"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="3" dy="3" stdDeviation="4" flood-color="#00000025"/>
+    </filter>
+  </defs>
+
+  <line x1="183" y1="232" x2="226" y2="232" stroke="#475569" stroke-width="2.2"
+        marker-end="url(#arr)" stroke-dasharray="none"/>
+
+  <!-- ═══════════════ STAGE 2: SEGMENTATION ═══════════════ -->
+  <rect x="230" y="196" width="148" height="80" rx="10" fill="url(#gradSeg)" stroke="#0891B2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="304" y="221" text-anchor="middle" font-size="9.5" fill="#A5F3FC" font-weight="600" letter-spacing="1">STAGE 2</text>
+  <text x="304" y="240" text-anchor="middle" font-size="16" fill="#ffffff">🔬</text>
+  <text x="304" y="260" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">3-D Segmentation</text>
+
+  <!-- ═══════════════ SPLIT ARROW: one line → three branches ═══════════════ -->
+  <!-- Horizontal trunk from segmentation -->
+  <line x1="379" y1="232" x2="430" y2="232" stroke="#475569" stroke-width="2.2"/>
+  <!-- Vertical spine -->
+  <line x1="430" y1="130" x2="430" y2="335" stroke="#475569" stroke-width="2"/>
+  <!-- Branch lines -->
+  <line x1="430" y1="130" x2="473" y2="130" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="430" y1="232" x2="473" y2="232" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="430" y1="335" x2="473" y2="335" stroke="#475569" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- "Parallel Modules" label -->
+  <rect x="385" y="64" width="90" height="22" rx="5" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+  <text x="430" y="79" text-anchor="middle" font-size="9.5" fill="#64748B" font-weight="600">PARALLEL MODULES</text>
+  <line x1="430" y1="86" x2="430" y2="130" stroke="#94A3B8" stroke-width="1.2" stroke-dasharray="4,3"/>
+
+  <!-- ═══════════════ MODULE A: RISK PREDICTOR ═══════════════ -->
+  <rect x="476" y="88" width="162" height="84" rx="10" fill="url(#gradRisk)" stroke="#DC2626" stroke-width="2" filter="url(#shadow)"/>
+  <text x="557" y="110" text-anchor="middle" font-size="9.5" fill="#FECACA" font-weight="600" letter-spacing="1">MODULE A</text>
+  <text x="557" y="130" text-anchor="middle" font-size="16" fill="#ffffff">⚠️</text>
+  <text x="557" y="151" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">Risk Predictor</text>
+  <text x="557" y="165" text-anchor="middle" font-size="9" fill="#FECACA">GNN · BCE · Calibration</text>
+
+  <!-- ═══════════════ MODULE B: HEATMAP ═══════════════ -->
+  <rect x="476" y="190" width="162" height="84" rx="10" fill="url(#gradHeat)" stroke="#D97706" stroke-width="2" filter="url(#shadow)"/>
+  <text x="557" y="212" text-anchor="middle" font-size="9.5" fill="#FDE68A" font-weight="600" letter-spacing="1">MODULE B</text>
+  <text x="557" y="232" text-anchor="middle" font-size="16" fill="#ffffff">🌡️</text>
+  <text x="557" y="253" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">Saliency Heatmap</text>
+  <text x="557" y="267" text-anchor="middle" font-size="9" fill="#FDE68A">Grad-CAM · XAI · 3-D Overlay</text>
+
+  <!-- ═══════════════ MODULE C: MORPHOLOGY ═══════════════ -->
+  <rect x="476" y="293" width="162" height="84" rx="10" fill="url(#gradMorph)" stroke="#059669" stroke-width="2" filter="url(#shadow)"/>
+  <text x="557" y="315" text-anchor="middle" font-size="9.5" fill="#A7F3D0" font-weight="600" letter-spacing="1">MODULE C</text>
+  <text x="557" y="335" text-anchor="middle" font-size="16" fill="#ffffff">📐</text>
+  <text x="557" y="356" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">Morphology Analyzer</text>
+  <text x="557" y="370" text-anchor="middle" font-size="9" fill="#A7F3D0">Curvature · Volume · Neck</text>
+
+  <!-- ═══════════════ MERGE ARROWS → REPORT ═══════════════ -->
+  <!-- Vertical merge spine on right -->
+  <line x1="639" y1="130" x2="710" y2="130" stroke="#475569" stroke-width="2"/>
+  <line x1="639" y1="232" x2="710" y2="232" stroke="#475569" stroke-width="2"/>
+  <line x1="639" y1="335" x2="710" y2="335" stroke="#475569" stroke-width="2"/>
+  <line x1="710" y1="130" x2="710" y2="335" stroke="#475569" stroke-width="2"/>
+  <line x1="710" y1="232" x2="756" y2="232" stroke="#475569" stroke-width="2.2" marker-end="url(#arr)"/>
+
+  <!-- ═══════════════ STAGE 4: CLINICAL REPORT ═══════════════ -->
+  <rect x="759" y="192" width="188" height="80" rx="10" fill="url(#gradReport)" stroke="#7C3AED" stroke-width="2" filter="url(#shadow)"/>
+  <text x="853" y="214" text-anchor="middle" font-size="9.5" fill="#DDD6FE" font-weight="600" letter-spacing="1">OUTPUT</text>
+  <text x="853" y="234" text-anchor="middle" font-size="16" fill="#ffffff">📋</text>
+  <text x="853" y="254" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">Clinical Report</text>
+  <text x="853" y="268" text-anchor="middle" font-size="9" fill="#DDD6FE">PDF · NLP Explanation</text>
+
+  <!-- ═══════════════ FLOW LABELS ═══════════════ -->
+  <rect x="186" y="222" width="42" height="14" rx="4" fill="#F1F5F9"/>
+  <text x="207" y="232" text-anchor="middle" font-size="8.5" fill="#475569" font-weight="600">NIfTI/OBJ</text>
+
+  <rect x="383" y="222" width="44" height="14" rx="4" fill="#F1F5F9"/>
+  <text x="405" y="232" text-anchor="middle" font-size="8.5" fill="#475569" font-weight="600">Point Cloud</text>
+
+  <rect x="715" y="222" width="38" height="14" rx="4" fill="#F1F5F9"/>
+  <text x="734" y="232" text-anchor="middle" font-size="8.5" fill="#475569" font-weight="600">Fusion</text>
+
+  <!-- ═══════════════ LEGEND ═══════════════ -->
+  <rect x="50" y="430" width="900" height="60" rx="8" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.2"/>
+  <text x="500" y="449" text-anchor="middle" font-size="9.5" fill="#1E3A5F" font-weight="700" letter-spacing="0.5">LEGEND</text>
+
+  <!-- Legend items -->
+  <rect x="70" y="455" width="14" height="14" rx="3" fill="url(#gradDicom)"/>
+  <text x="90" y="466" font-size="9" fill="#334155">DICOM Acquisition</text>
+
+  <rect x="200" y="455" width="14" height="14" rx="3" fill="url(#gradSeg)"/>
+  <text x="220" y="466" font-size="9" fill="#334155">Segmentation Pipeline</text>
+
+  <rect x="360" y="455" width="14" height="14" rx="3" fill="url(#gradRisk)"/>
+  <text x="380" y="466" font-size="9" fill="#334155">Risk Classification (GNN)</text>
+
+  <rect x="530" y="455" width="14" height="14" rx="3" fill="url(#gradHeat)"/>
+  <text x="550" y="466" font-size="9" fill="#334155">Saliency / XAI Heatmap</text>
+
+  <rect x="700" y="455" width="14" height="14" rx="3" fill="url(#gradMorph)"/>
+  <text x="720" y="466" font-size="9" fill="#334155">Morphological Features</text>
+
+  <rect x="845" y="455" width="14" height="14" rx="3" fill="url(#gradReport)"/>
+  <text x="865" y="466" font-size="9" fill="#334155">Clinical Report</text>
+
+  <!-- ═══════════════ CAPTION ═══════════════ -->
+  <text x="500" y="505" text-anchor="middle" font-size="9.5" fill="#64748B" font-style="italic">
+    Figure 1 — Three-module architecture of the AneuXplain system (DICOM input → segmentation → three parallel modules → clinical report).
+  </text>
+
+</svg>
