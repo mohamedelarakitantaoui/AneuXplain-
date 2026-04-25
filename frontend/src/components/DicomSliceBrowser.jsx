@@ -93,7 +93,7 @@ export default function DicomSliceBrowser({ apiUrl, sessionId, axisCounts }) {
               position: 'absolute',
               width: 28,
               height: 28,
-              color: '#4A9EFF',
+              color: '#dc2626',
               animation: 'spin 1s linear infinite',
             }}
           />
@@ -128,7 +128,7 @@ export default function DicomSliceBrowser({ apiUrl, sessionId, axisCounts }) {
           onChange={(e) =>
             setIndexByAxis((prev) => ({ ...prev, [axis]: parseInt(e.target.value, 10) }))
           }
-          style={{ flex: 1, accentColor: '#4A9EFF' }}
+          style={{ flex: 1, accentColor: '#dc2626' }}
         />
       </div>
     </motion.div>

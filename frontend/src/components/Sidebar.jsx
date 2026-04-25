@@ -54,7 +54,7 @@ export function MedicalToolsSidebar({
     <div className="bg-slate-800/80 backdrop-blur-sm rounded-xl border border-slate-700/50 p-4 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-2 pb-3 border-b border-slate-700/50">
-        <Layers className="w-5 h-5 text-cyan-400" />
+        <Layers className="w-5 h-5 text-red-400" />
         <h3 className="text-sm font-semibold text-slate-200">Medical Tools</h3>
       </div>
 
@@ -62,7 +62,7 @@ export function MedicalToolsSidebar({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Scissors className="w-4 h-4 text-cyan-400" />
+            <Scissors className="w-4 h-4 text-red-400" />
             <span className="text-sm text-slate-300">Clipping Plane</span>
           </div>
           <span className="text-xs text-slate-500 font-mono">
@@ -82,16 +82,16 @@ export function MedicalToolsSidebar({
                        [&::-webkit-slider-thumb]:appearance-none
                        [&::-webkit-slider-thumb]:w-4
                        [&::-webkit-slider-thumb]:h-4
-                       [&::-webkit-slider-thumb]:bg-cyan-500
+                       [&::-webkit-slider-thumb]:bg-red-500
                        [&::-webkit-slider-thumb]:rounded-full
                        [&::-webkit-slider-thumb]:cursor-pointer
                        [&::-webkit-slider-thumb]:shadow-lg
-                       [&::-webkit-slider-thumb]:shadow-cyan-500/30
+                       [&::-webkit-slider-thumb]:shadow-red-500/30
                        [&::-webkit-slider-thumb]:transition-all
-                       [&::-webkit-slider-thumb]:hover:bg-cyan-400
+                       [&::-webkit-slider-thumb]:hover:bg-red-400
                        [&::-moz-range-thumb]:w-4
                        [&::-moz-range-thumb]:h-4
-                       [&::-moz-range-thumb]:bg-cyan-500
+                       [&::-moz-range-thumb]:bg-red-500
                        [&::-moz-range-thumb]:rounded-full
                        [&::-moz-range-thumb]:border-0
                        [&::-moz-range-thumb]:cursor-pointer"
@@ -175,16 +175,16 @@ export function MedicalToolsSidebar({
       {showManifoldTools && (
         <>
           {/* Divider */}
-          <div className="border-t border-cyan-500/30 mt-2" />
+          <div className="border-t border-red-500/30 mt-2" />
 
           {/* Manifold Explorer Header */}
           <div className="flex items-center gap-2 pt-2">
-            <Sparkles className="w-5 h-5 text-cyan-400" />
-            <h3 className="text-sm font-semibold text-cyan-300">Manifold Explorer</h3>
+            <Sparkles className="w-5 h-5 text-red-400" />
+            <h3 className="text-sm font-semibold text-red-300">Manifold Explorer</h3>
           </div>
 
           {/* Morph Slider - The Manifold */}
-          <div className="space-y-3 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-lg p-3 border border-cyan-500/20">
+          <div className="space-y-3 bg-gradient-to-br from-red-500/10 to-red-500/10 rounded-lg p-3 border border-red-500/20">
             <div className="flex justify-between text-xs">
               <span className="text-red-400 font-medium">🔴 Sick</span>
               <span className={`font-bold ${riskState.color} ${riskState.bg} px-2 py-0.5 rounded`}>
@@ -240,23 +240,23 @@ export function MedicalToolsSidebar({
               <span className="text-slate-500 italic text-xs">Manifold Position</span>
             </div>
 
-            <p className="text-xs text-cyan-300/60 italic text-center border-t border-slate-700 pt-2">
+            <p className="text-xs text-red-300/60 italic text-center border-t border-slate-700 pt-2">
               ✨ Drag to traverse the geometric manifold
             </p>
           </div>
 
           {/* Root Cause Heatmap Toggle */}
-          <div className="space-y-2 bg-purple-500/10 rounded-lg p-3 border border-purple-500/20">
+          <div className="space-y-2 bg-red-600/10 rounded-lg p-3 border border-red-500/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-purple-400" />
+                <Target className="w-4 h-4 text-red-400" />
                 <span className="text-sm text-slate-300 font-medium">Root Cause Heatmap</span>
               </div>
               <button
                 onClick={() => onHeatmapChange?.(!showHeatmap)}
                 className={`relative w-11 h-6 rounded-full transition-all duration-300 ${
                   showHeatmap 
-                    ? 'bg-purple-500' 
+                    ? 'bg-red-600' 
                     : 'bg-slate-700'
                 }`}
               >
@@ -280,7 +280,7 @@ export function MedicalToolsSidebar({
               </div>
             )}
 
-            <p className="text-xs text-purple-300/60 italic">
+            <p className="text-xs text-red-300/60 italic">
               🎯 Isolate the geometric feature causing risk
             </p>
           </div>
@@ -304,7 +304,7 @@ export function MedicalToolsCompact({
     <div className="flex items-center gap-4 bg-slate-800/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-slate-700/50">
       {/* Clipping Control */}
       <div className="flex items-center gap-2">
-        <Scissors className="w-4 h-4 text-cyan-400" />
+        <Scissors className="w-4 h-4 text-red-400" />
         <input
           type="range"
           min="-2"
@@ -316,7 +316,7 @@ export function MedicalToolsCompact({
                      [&::-webkit-slider-thumb]:appearance-none
                      [&::-webkit-slider-thumb]:w-3
                      [&::-webkit-slider-thumb]:h-3
-                     [&::-webkit-slider-thumb]:bg-cyan-500
+                     [&::-webkit-slider-thumb]:bg-red-500
                      [&::-webkit-slider-thumb]:rounded-full"
         />
       </div>

@@ -94,17 +94,17 @@ export default function DicomWorkflow({ apiUrl, onAnalysisComplete, initialSessi
   }
 
   return (
-    <div className="absolute inset-0 flex flex-col" style={{ background: 'linear-gradient(135deg, #0F1117 0%, #141821 50%, #0F1117 100%)' }}>
+    <div className="absolute inset-0 flex flex-col" style={{ background: '#ffffff' }}>
       {/* Header strip */}
       <div
         className="flex items-center justify-between px-5"
-        style={{ height: 56, borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+        style={{ height: 56, borderBottom: '1px solid rgba(0,0,0,0.06)' }}
       >
-        <div style={{ fontSize: 12, color: '#94A3B8', fontFamily: 'ui-monospace, monospace' }}>
-          session <span style={{ color: '#4A9EFF' }}>{sessionId.slice(0, 8)}</span>
+        <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'ui-monospace, monospace' }}>
+          session <span style={{ color: '#dc2626' }}>{sessionId.slice(0, 8)}</span>
           {metadata?.source && <span style={{ marginLeft: 12, color: '#475569' }}>• {metadata.source}</span>}
         </div>
-        <div style={{ fontSize: 11, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        <div style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           {segmentationDone ? 'Step 2 — Click to crop' : 'Step 1 — Browse & segment'}
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function DicomWorkflow({ apiUrl, onAnalysisComplete, initialSessi
                   <DicomSliceBrowser apiUrl={apiUrl} sessionId={sessionId} axisCounts={sliceInfo} />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">
-                    <Loader2 style={{ width: 24, height: 24, color: '#4A9EFF', animation: 'spin 1s linear infinite' }} />
+                    <Loader2 style={{ width: 24, height: 24, color: '#dc2626', animation: 'spin 1s linear infinite' }} />
                   </div>
                 )}
               </div>
@@ -138,8 +138,8 @@ export default function DicomWorkflow({ apiUrl, onAnalysisComplete, initialSessi
                 className="flex items-center gap-2.5 mt-5"
                 style={{
                   padding: '12px 28px',
-                  background: segmenting || !sliceInfo ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg, #4A9EFF, #3B82F6)',
-                  color: segmenting || !sliceInfo ? '#475569' : '#fff',
+                  background: segmenting || !sliceInfo ? 'rgba(0,0,0,0.05)' : 'linear-gradient(135deg, #dc2626, #dc2626)',
+                  color: segmenting || !sliceInfo ? '#94A3B8' : '#fff',
                   fontWeight: 500,
                   fontSize: 14,
                   borderRadius: 10,
@@ -182,7 +182,7 @@ export default function DicomWorkflow({ apiUrl, onAnalysisComplete, initialSessi
                     style={{ background: 'rgba(15, 17, 23, 0.88)', backdropFilter: 'blur(4px)', zIndex: 50 }}
                   >
                     <div className="text-center">
-                      <Loader2 style={{ width: 40, height: 40, color: '#4A9EFF', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+                      <Loader2 style={{ width: 40, height: 40, color: '#dc2626', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
                       <p style={{ color: '#64748B', fontSize: 12, fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         Cropping & analyzing region...
                       </p>

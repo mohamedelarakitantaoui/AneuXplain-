@@ -11,13 +11,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Design tokens
 // ============================================
 const COLORS = {
-  bg:        '#1A1D27',
-  surface:   '#242836',
-  border:    'rgba(255,255,255,0.06)',
-  textPri:   '#F1F5F9',
-  textSec:   '#94A3B8',
-  textTer:   '#64748B',
-  accent:    '#4A9EFF',
+  bg:        'rgba(255,255,255,0.88)',
+  surface:   'rgba(255,255,255,0.72)',
+  border:    'rgba(0,0,0,0.07)',
+  textPri:   '#0F1117',
+  textSec:   '#475569',
+  textTer:   '#94A3B8',
+  accent:    '#dc2626',
+};
+
+const GLASS = {
+  background:              COLORS.bg,
+  backdropFilter:          'blur(24px)',
+  WebkitBackdropFilter:    'blur(24px)',
+  borderRadius:            20,
+  border:                  '1px solid rgba(0,0,0,0.08)',
+  boxShadow:               '0 8px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.06)',
+  width:                   320,
+  maxHeight:               'calc(100vh - 88px)',
+  display:                 'flex',
+  flexDirection:           'column',
+  overflow:                'hidden',
 };
 
 const RISK_COLORS = {
@@ -51,10 +65,11 @@ function SkeletonCard() {
       borderRadius: 12,
       padding: 16,
       marginBottom: 12,
+      border: '1px solid rgba(0,0,0,0.06)',
     }}>
-      <div style={{ height: 10, width: 100, background: '#2a2e3a', borderRadius: 4, marginBottom: 12 }} className="animate-pulse" />
-      <div style={{ height: 28, width: 70, background: '#2a2e3a', borderRadius: 4, marginBottom: 8 }} className="animate-pulse" />
-      <div style={{ height: 4, width: '100%', background: '#2a2e3a', borderRadius: 2 }} className="animate-pulse" />
+      <div style={{ height: 10, width: 100, background: '#E2E8F0', borderRadius: 4, marginBottom: 12 }} className="animate-pulse" />
+      <div style={{ height: 28, width: 70, background: '#E2E8F0', borderRadius: 4, marginBottom: 8 }} className="animate-pulse" />
+      <div style={{ height: 4, width: '100%', background: '#E2E8F0', borderRadius: 2 }} className="animate-pulse" />
     </div>
   );
 }
@@ -66,17 +81,18 @@ function SkeletonSummary() {
       borderRadius: 12,
       padding: 16,
       marginBottom: 12,
+      border: '1px solid rgba(0,0,0,0.06)',
     }}>
       <div className="flex gap-4 mb-3">
-        <div style={{ height: 36, width: 50, background: '#2a2e3a', borderRadius: 4 }} className="animate-pulse" />
+        <div style={{ height: 36, width: 50, background: '#E2E8F0', borderRadius: 4 }} className="animate-pulse" />
         <div className="flex-1 space-y-2">
-          <div style={{ height: 14, width: 80, background: '#2a2e3a', borderRadius: 4 }} className="animate-pulse" />
-          <div style={{ height: 10, width: 120, background: '#2a2e3a', borderRadius: 4 }} className="animate-pulse" />
+          <div style={{ height: 14, width: 80, background: '#E2E8F0', borderRadius: 4 }} className="animate-pulse" />
+          <div style={{ height: 10, width: 120, background: '#E2E8F0', borderRadius: 4 }} className="animate-pulse" />
         </div>
       </div>
       <div className="space-y-2">
-        <div style={{ height: 8, width: '100%', background: '#2a2e3a', borderRadius: 3 }} className="animate-pulse" />
-        <div style={{ height: 8, width: '85%', background: '#2a2e3a', borderRadius: 3 }} className="animate-pulse" />
+        <div style={{ height: 8, width: '100%', background: '#E2E8F0', borderRadius: 3 }} className="animate-pulse" />
+        <div style={{ height: 8, width: '85%', background: '#E2E8F0', borderRadius: 3 }} className="animate-pulse" />
       </div>
     </div>
   );
@@ -111,7 +127,7 @@ function RangeBar({ value, lowUpper, highLower, invert }) {
         position: 'relative',
         height: 4,
         borderRadius: 2,
-        background: '#1A1D27',
+        background: '#E2E8F0',
         overflow: 'visible',
       }}>
         {/* Green zone */}
@@ -144,7 +160,7 @@ function RangeBar({ value, lowUpper, highLower, invert }) {
           height: 0,
           borderLeft: '4px solid transparent',
           borderRight: '4px solid transparent',
-          borderTop: '5px solid white',
+          borderTop: '5px solid #334155',
         }} />
       </div>
     </div>
@@ -179,6 +195,9 @@ function ParameterCard({ param, isExpanded, isSelected, onToggle }) {
         marginBottom: 12,
         cursor: isNA ? 'default' : 'pointer',
         borderLeft: isExpanded || isSelected ? `3px solid ${riskColor}` : '3px solid transparent',
+        border: `1px solid rgba(0,0,0,0.06)`,
+        borderLeftWidth: isExpanded || isSelected ? 3 : 1,
+        borderLeftColor: isExpanded || isSelected ? riskColor : 'rgba(0,0,0,0.06)',
         transition: 'border-color 0.2s, transform 0.2s, opacity 0.2s',
         transform: 'translateY(0)',
         opacity: isNA ? 0.6 : 1,
@@ -295,7 +314,7 @@ function ParameterCard({ param, isExpanded, isSelected, onToggle }) {
                       Significance
                     </span>
                   </div>
-                  <p style={{ fontSize: 12, color: '#7C8BA5', lineHeight: 1.6, marginLeft: 9 }}>
+                  <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6, marginLeft: 9 }}>
                     {param.clinical_significance}
                   </p>
                 </div>
@@ -323,6 +342,7 @@ function SummaryCard({ clinicalReport }) {
       borderRadius: 12,
       padding: 16,
       marginBottom: 12,
+      border: '1px solid rgba(0,0,0,0.06)',
     }}>
       {/* Mini stat row */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
@@ -410,23 +430,14 @@ export default function MorphologyReport({
   if (isLoading) {
     return (
       <motion.div
-        initial={{ x: 380 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        style={{
-          width: 380,
-          height: '100%',
-          background: COLORS.bg,
-          borderLeft: `1px solid ${COLORS.border}`,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          flexShrink: 0,
-        }}
+        initial={{ opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        style={GLASS}
       >
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${COLORS.border}` }}>
-          <div style={{ height: 14, width: 140, background: '#2a2e3a', borderRadius: 4 }} className="animate-pulse" />
-          <div style={{ height: 10, width: 100, background: '#2a2e3a', borderRadius: 4, marginTop: 6 }} className="animate-pulse" />
+          <div style={{ height: 14, width: 140, background: '#E2E8F0', borderRadius: 4 }} className="animate-pulse" />
+          <div style={{ height: 10, width: 100, background: '#E2E8F0', borderRadius: 4, marginTop: 6 }} className="animate-pulse" />
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
           <SkeletonSummary />
@@ -445,19 +456,10 @@ export default function MorphologyReport({
 
   return (
     <motion.div
-      initial={{ x: 380 }}
-      animate={{ x: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      style={{
-        width: 380,
-        height: '100%',
-        background: COLORS.bg,
-        borderLeft: `1px solid ${COLORS.border}`,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        flexShrink: 0,
-      }}
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      style={GLASS}
     >
       {/* Header */}
       <div style={{ padding: '16px 20px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>

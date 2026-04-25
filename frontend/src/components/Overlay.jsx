@@ -1,10 +1,11 @@
 import { Ruler, Scissors, Upload, Scan, FileText } from 'lucide-react';
 
 /**
- * PACSToolbar - Left sidebar vertical toolbar (56px, icon-only, clean medical style)
+ * PACSToolbar - Floating circles on the left edge of the viewport
  */
 export function PACSToolbar({
   onUpload,
+  onLogoClick,
   isMeasuring = false,
   onMeasuringChange,
   clippingY = 2,
@@ -15,6 +16,8 @@ export function PACSToolbar({
   onExportReport,
   canExport = false,
 }) {
+  const sliceActive = clippingY < 2;
+
   const tools = [
     {
       id: 'upload',
@@ -37,8 +40,8 @@ export function PACSToolbar({
       id: 'slice',
       icon: Scissors,
       label: 'Slice',
-      onClick: () => onClippingChange?.(clippingY >= 2 ? 0 : 2),
-      active: clippingY < 2,
+      onClick: () => onClippingChange?.(sliceActive ? 2 : 0),
+      active: sliceActive,
       show: true,
     },
     {
@@ -59,68 +62,119 @@ export function PACSToolbar({
     },
   ];
 
+  const circleBase = {
+    width: 46,
+    height: 46,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+    border: 'none',
+    outline: 'none',
+  };
+
   return (
-    <div
-      className="flex flex-col items-center py-5 gap-1 shrink-0"
-      style={{
-        width: 56,
-        height: '100%',
-        background: 'rgba(15, 17, 23, 0.85)',
-        backdropFilter: 'blur(24px)',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      {/* Logo mark */}
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-4"
-        style={{ background: 'linear-gradient(135deg, #4A9EFF, #3B82F6)' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
-      </div>
+    <>
+      {/* Floating circles column */}
+      <div
+        style={{
+          position: 'fixed',
+          left: 16,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 10,
+          zIndex: 100,
+        }}
+      >
+        {/* Logo circle — click opens landing page */}
+        <button
+          onClick={onLogoClick}
+          title="About AneuXplain"
+          style={{
+            ...circleBase,
+            background: '#ffffff',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06)',
+            cursor: 'pointer',
+            marginBottom: 6,
+            transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+            overflow: 'hidden',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.16)'; e.currentTarget.style.transform = 'scale(1.07)'; }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06)'; e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <img src="/logoAneuX.png" alt="AneuXplain" style={{ width: 32, height: 32, objectFit: 'contain' }} />
+        </button>
 
-      {/* Divider */}
-      <div className="w-6 mb-3" style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+        {/* Thin separator */}
+        <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.12)', marginBottom: 2 }} />
 
-      {/* Tool Buttons */}
-      <div className="flex-1 flex flex-col gap-0.5">
+        {/* Tool buttons */}
         {tools.filter(t => t.show).map((tool) => (
           <button
             key={tool.id}
             onClick={tool.onClick}
             disabled={tool.loading}
             title={tool.label}
-            className="group relative flex items-center justify-center transition-all duration-200"
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 8,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              color: tool.active ? '#4A9EFF' : tool.loading ? '#4A9EFF' : '#64748B',
-              background: tool.active ? 'rgba(74, 158, 255, 0.08)' : 'transparent',
-              borderLeft: tool.active ? '3px solid #4A9EFF' : '3px solid transparent',
+              ...circleBase,
+              background: tool.active
+                ? 'rgba(220, 38, 38, 0.08)'
+                : '#ffffff',
+              boxShadow: tool.active
+                ? '0 0 0 1.5px rgba(220, 38, 38, 0.45), 0 4px 14px rgba(220, 38, 38, 0.1)'
+                : '0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06)',
+              color: tool.active ? '#dc2626' : tool.loading ? '#dc2626' : '#94A3B8',
               cursor: tool.loading ? 'wait' : 'pointer',
             }}
           >
             {tool.loading ? (
-              <svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24">
+              <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
             ) : (
-              <tool.icon style={{ width: 20, height: 20 }} />
+              <tool.icon style={{ width: 18, height: 18 }} />
             )}
           </button>
         ))}
+
+        {/* Bottom separator + status dot */}
+        <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.12)', marginTop: 2 }} />
+        <div
+          style={{ width: 7, height: 7, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 8px rgba(52, 211, 153, 0.5)' }}
+          title="System Ready"
+        />
       </div>
 
-      {/* Clipping Slider (vertical) */}
-      {clippingY < 2 && (
-        <div className="mt-auto pt-3 w-full flex flex-col items-center gap-2"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <span style={{ fontSize: 9, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Clip</span>
+      {/* Clipping slider — floats to the right of the circles when slice is active */}
+      {sliceActive && (
+        <div
+          style={{
+            position: 'fixed',
+            left: 74,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: '#ffffff',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderRadius: 14,
+            padding: '14px 10px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06)',
+            zIndex: 100,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 9, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 500 }}>Clip</span>
           <input
             type="range"
             min="-2"
@@ -132,32 +186,30 @@ export function PACSToolbar({
                        [&::-webkit-slider-thumb]:appearance-none
                        [&::-webkit-slider-thumb]:w-3
                        [&::-webkit-slider-thumb]:h-3
-                       [&::-webkit-slider-thumb]:bg-[#4A9EFF]
+                       [&::-webkit-slider-thumb]:bg-[#dc2626]
                        [&::-webkit-slider-thumb]:rounded-full
                        [&::-webkit-slider-thumb]:cursor-pointer
                        [&::-moz-range-thumb]:w-3
                        [&::-moz-range-thumb]:h-3
-                       [&::-moz-range-thumb]:bg-[#4A9EFF]
+                       [&::-moz-range-thumb]:bg-[#dc2626]
                        [&::-moz-range-thumb]:rounded-full
                        [&::-moz-range-thumb]:border-0"
             style={{
               writingMode: 'vertical-lr',
               direction: 'rtl',
-              width: 60,
+              width: 80,
               height: 6,
-              background: '#242836',
+              background: 'rgba(220, 38, 38, 0.12)',
               borderRadius: 3,
               transform: 'rotate(180deg)',
             }}
           />
+          <span style={{ fontSize: 9, color: '#64748B', fontFamily: 'monospace' }}>
+            {Math.round(((clippingY + 2) / 4) * 100)}%
+          </span>
         </div>
       )}
-
-      {/* Status dot */}
-      <div className="mt-auto pt-3">
-        <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#34D399' }} title="System Ready" />
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -175,16 +227,17 @@ export function MeasurementIndicator({
     <div
       className="flex items-center gap-2.5 px-3.5 py-2"
       style={{
-        background: 'rgba(15, 17, 23, 0.85)',
+        background: 'rgba(255,255,255,0.92)',
         backdropFilter: 'blur(24px)',
         borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.06)',
+        border: '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       }}
     >
       <Ruler style={{ width: 14, height: 14, color: '#94A3B8' }} />
       <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 400 }}>
         {measurement !== null
-          ? <><span style={{ color: '#F1F5F9', fontWeight: 400 }}>{measurement.toFixed(2)}</span> mm</>
+          ? <><span style={{ color: '#0F1117', fontWeight: 500 }}>{measurement.toFixed(2)}</span> mm</>
           : pointCount === 0
             ? 'Click first point'
             : 'Click second point'
@@ -206,15 +259,16 @@ export function ClippingIndicator({ clippingY }) {
     <div
       className="flex items-center gap-2 px-3.5 py-2"
       style={{
-        background: 'rgba(15, 17, 23, 0.85)',
+        background: 'rgba(255,255,255,0.92)',
         backdropFilter: 'blur(24px)',
         borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.06)',
+        border: '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       }}
     >
       <Scissors style={{ width: 14, height: 14, color: '#94A3B8' }} />
       <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 400 }}>
-        Clip <span style={{ color: '#F1F5F9' }}>{percent}%</span>
+        Clip <span style={{ color: '#0F1117', fontWeight: 500 }}>{percent}%</span>
       </span>
     </div>
   );

@@ -3,7 +3,6 @@ import { Canvas, useLoader } from '@react-three/fiber';
 import {
   OrbitControls,
   OrthographicCamera,
-  Environment,
   GizmoHelper,
   GizmoViewcube,
   Grid,
@@ -137,8 +136,6 @@ export default function VesselTreeViewer({ apiUrl, sessionId, onCropPointSelecte
         <directionalLight position={[10, 10, 5]} intensity={0.9} castShadow />
         <directionalLight position={[-5, 5, -5]} intensity={0.3} />
         <pointLight position={[0, 5, 0]} intensity={0.15} color="#4A9EFF" />
-
-        <Environment preset="city" />
 
         <Grid
           position={[0, -1.5, 0]}

@@ -33,11 +33,13 @@ export default function RiskScoreCard({ riskScore, riskLevel }) {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       style={{
         width: 240,
-        background: '#242836',
-        borderRadius: 16,
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'rgba(255,255,255,0.88)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderRadius: 20,
+        border: '1px solid rgba(0,0,0,0.08)',
         padding: '20px 24px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.06)',
       }}
     >
       {/* Risk percentage */}
@@ -91,8 +93,8 @@ export default function RiskScoreCard({ riskScore, riskLevel }) {
       </div>
 
       {/* Divider + timestamp */}
-      <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '14px 0 10px' }} />
-      <p style={{ fontSize: 10, color: '#475569', letterSpacing: '0.02em' }}>
+      <div style={{ height: 1, background: 'rgba(0,0,0,0.07)', margin: '14px 0 10px' }} />
+      <p style={{ fontSize: 10, color: '#94A3B8', letterSpacing: '0.02em' }}>
         Analyzed at {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </p>
     </motion.div>

@@ -3,15 +3,16 @@ import { Canvas, useLoader, useThree, useFrame } from '@react-three/fiber';
 import {
   OrbitControls,
   OrthographicCamera,
-  Environment,
   GizmoHelper,
   GizmoViewcube,
   Grid,
   ContactShadows,
   Line,
-  Html
+  Html,
+  Wireframe,
 } from '@react-three/drei';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as THREE from 'three';
 
 // ============================================
@@ -135,7 +136,7 @@ function ClippingPlaneHelper({ clippingY, visible }) {
     <mesh position={[0, clippingY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[4, 4]} />
       <meshBasicMaterial
-        color="#4A9EFF"
+        color="#dc2626"
         transparent
         opacity={0.08}
         side={THREE.DoubleSide}
@@ -169,7 +170,7 @@ function MeasurementTool({ points, onClearMeasurement }) {
           </mesh>
           <mesh position={point}>
             <sphereGeometry args={[0.04, 16, 16]} />
-            <meshBasicMaterial color="#4A9EFF" transparent opacity={0.2} />
+            <meshBasicMaterial color="#dc2626" transparent opacity={0.2} />
           </mesh>
         </group>
       ))}
@@ -188,15 +189,15 @@ function MeasurementTool({ points, onClearMeasurement }) {
 
           <Html position={midpoint} center>
             <div style={{
-              background: '#242836',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: '#ffffff',
+              border: '1px solid rgba(0,0,0,0.08)',
               borderRadius: 20,
               padding: '4px 12px',
               fontSize: 12,
               fontWeight: 300,
-              color: '#F1F5F9',
+              color: '#0F1117',
               whiteSpace: 'nowrap',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
@@ -246,7 +247,7 @@ function MeasurementHighlight({ highlight, transforms }) {
   console.log('[MeasurementHighlight] rendering:', highlight.parameterName, spatial.type,
     'positions:', spatial.vertex_positions.length);
 
-  const color = spatial.color || '#4A9EFF';
+  const color = spatial.color || '#dc2626';
   const { center, scale } = transforms;
 
   // Transform backend positions (original mesh coords) → world space
@@ -589,13 +590,14 @@ function HeatmapMesh({ url, heatmapData, clippingPlanes = [], visible }) {
 function HeatmapLegend() {
   return (
     <div style={{
-      background: 'rgba(15, 17, 23, 0.85)',
+      background: 'rgba(255,255,255,0.95)',
       backdropFilter: 'blur(24px)',
       borderRadius: 10,
       padding: 12,
-      border: '1px solid rgba(255,255,255,0.06)',
+      border: '1px solid rgba(0,0,0,0.08)',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
     }}>
-      <p style={{ fontSize: 11, color: '#94A3B8', marginBottom: 6 }}>Risk Sensitivity</p>
+      <p style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>Risk Sensitivity</p>
       <div
         style={{
           width: 200,
@@ -634,13 +636,15 @@ function ClickableModel({
   const clonedObj = useMemo(() => obj.clone(true), [obj]);
   const meshesRef = useRef([]);
   const initializedRef = useRef(false);
+  const [wireframeGeo, setWireframeGeo] = useState(null);
 
-  // One-time material setup (transforms are applied by parent <group>)
+  // One-time material setup + collect geometries for thick wireframe
   useEffect(() => {
     if (!clonedObj || initializedRef.current) return;
     initializedRef.current = true;
 
     meshesRef.current = [];
+    const geos = [];
 
     clonedObj.traverse((child) => {
       if (child.isMesh) {
@@ -648,20 +652,30 @@ function ClickableModel({
           color: color,
           opacity: opacity,
           transparent: opacity < 1.0,
-          wireframe: wireframe,
-          metalness: wireframe ? 0.05 : 0.1,
-          roughness: wireframe ? 0.9 : 0.6,
+          metalness: 0.1,
+          roughness: 0.6,
           side: THREE.DoubleSide,
           depthWrite: opacity >= 1.0,
           clippingPlanes: clippingPlanes,
           clipShadows: true,
         });
-        child.castShadow = !wireframe;
-        child.receiveShadow = !wireframe;
+        child.castShadow = true;
+        child.receiveShadow = true;
         child.visible = visible;
         meshesRef.current.push(child);
+        geos.push(child.geometry);
       }
     });
+
+    // Build merged geometry once for the thick-wireframe overlay
+    if (geos.length > 0) {
+      try {
+        const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos);
+        setWireframeGeo(merged);
+      } catch {
+        setWireframeGeo(geos[0]);
+      }
+    }
 
     if (objRef) objRef.current = clonedObj;
   }, [clonedObj]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -672,12 +686,12 @@ function ClickableModel({
 
     meshesRef.current.forEach((child) => {
       child.material.color.set(color);
-      child.material.opacity = opacity;
-      child.material.transparent = opacity < 1.0;
-      child.material.wireframe = wireframe;
-      child.material.metalness = wireframe ? 0.05 : 0.1;
-      child.material.roughness = wireframe ? 0.9 : 0.6;
-      child.material.depthWrite = opacity >= 1.0;
+      // Hide the base mesh surface when wireframe overlay is active
+      child.material.opacity = wireframe ? 0 : opacity;
+      child.material.transparent = wireframe || opacity < 1.0;
+      child.material.metalness = 0.1;
+      child.material.roughness = 0.6;
+      child.material.depthWrite = !wireframe && opacity >= 1.0;
       child.material.clippingPlanes = clippingPlanes;
       child.material.needsUpdate = true;
       child.castShadow = !wireframe;
@@ -688,34 +702,34 @@ function ClickableModel({
 
   const handleClick = useCallback((event) => {
     if (!isMeasuring || !onMeasureClick) return;
-
     event.stopPropagation();
-
     raycaster.setFromCamera(pointer, camera);
     const intersects = raycaster.intersectObjects(meshesRef.current, true);
-
-    if (intersects.length > 0) {
-      onMeasureClick(intersects[0].point.clone());
-    }
+    if (intersects.length > 0) onMeasureClick(intersects[0].point.clone());
   }, [isMeasuring, onMeasureClick, raycaster, pointer, camera]);
 
   useEffect(() => {
-    if (isMeasuring) {
-      gl.domElement.style.cursor = 'crosshair';
-    } else {
-      gl.domElement.style.cursor = 'grab';
-    }
-    return () => {
-      gl.domElement.style.cursor = 'grab';
-    };
+    gl.domElement.style.cursor = isMeasuring ? 'crosshair' : 'grab';
+    return () => { gl.domElement.style.cursor = 'grab'; };
   }, [isMeasuring, gl]);
 
   return clonedObj ? (
-    <primitive
-      ref={meshRef}
-      object={clonedObj}
-      onClick={handleClick}
-    />
+    <>
+      {/* Base mesh — invisible in wireframe mode (kept for raycasting) */}
+      <primitive ref={meshRef} object={clonedObj} onClick={handleClick} />
+
+      {/* Thick shader-based wireframe overlay */}
+      {wireframe && wireframeGeo && (
+        <Wireframe
+          geometry={wireframeGeo}
+          thickness={0.022}
+          stroke="#2C4A6E"
+          fillOpacity={0}
+          strokeOpacity={0.85}
+          simplify={false}
+        />
+      )}
+    </>
   ) : null;
 }
 
@@ -815,7 +829,7 @@ const ArteryViewer = forwardRef(function ArteryViewer({
 
   if (error) {
     return (
-      <div className="w-full h-full flex items-center justify-center" style={{ background: '#0F1117' }}>
+      <div className="w-full h-full flex items-center justify-center" style={{ background: '#ffffff' }}>
         <div className="text-center p-8">
           <svg className="w-16 h-16 mx-auto mb-4" style={{ color: '#F87171' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -828,7 +842,7 @@ const ArteryViewer = forwardRef(function ArteryViewer({
 
   if (!originalObjUrl) {
     return (
-      <div className="w-full h-full flex items-center justify-center" style={{ background: '#0F1117' }}>
+      <div className="w-full h-full flex items-center justify-center" style={{ background: '#ffffff' }}>
         <div className="text-center p-8">
           <svg className="w-20 h-20 mx-auto mb-6" style={{ color: '#475569' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -842,7 +856,7 @@ const ArteryViewer = forwardRef(function ArteryViewer({
 
   return (
     <div ref={canvasContainerRef} className="w-full h-full relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #0F1117 0%, #141821 100%)' }}>
+      style={{ background: '#F8FAFC' }}>
       <Canvas
         shadows
         style={{ width: '100%', height: '100%' }}
@@ -880,9 +894,7 @@ const ArteryViewer = forwardRef(function ArteryViewer({
           shadow-mapSize-height={2048}
         />
         <directionalLight position={[-5, 5, -5]} intensity={0.3} />
-        <pointLight position={[0, 5, 0]} intensity={0.15} color="#4A9EFF" />
-
-        <Environment preset="city" />
+        <pointLight position={[0, 5, 0]} intensity={0.15} color="#ffffff" />
 
         {/* Grid */}
         <Grid
@@ -890,10 +902,10 @@ const ArteryViewer = forwardRef(function ArteryViewer({
           args={[20, 20]}
           cellSize={0.5}
           cellThickness={0.3}
-          cellColor="#1a1e28"
+          cellColor="#E2E8F0"
           sectionSize={2}
           sectionThickness={0.5}
-          sectionColor="#242836"
+          sectionColor="#CBD5E1"
           fadeDistance={15}
           fadeStrength={1.5}
           followCamera={false}
@@ -985,14 +997,14 @@ const ArteryViewer = forwardRef(function ArteryViewer({
         />
 
         <GizmoHelper
-          alignment="bottom-right"
-          margin={[100, 140]}
+          alignment="bottom-left"
+          margin={[340, 80]}
         >
           <GizmoViewcube
             color="#1A1D27"
             textColor="#94A3B8"
             strokeColor="#2a2e3a"
-            hoverColor="#4A9EFF"
+            hoverColor="#dc2626"
             opacity={0.9}
             faces={['Right', 'Left', 'Top', 'Bottom', 'Front', 'Back']}
           />

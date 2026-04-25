@@ -12,6 +12,7 @@ import { PACSToolbar, MeasurementIndicator, ClippingIndicator } from './componen
 import RiskScoreCard from './components/RiskAnalysisHUD';
 import MorphologyReport from './components/MorphologyReport';
 import DicomWorkflow from './components/DicomWorkflow';
+import LandingPage from './components/LandingPage';
 import { exportAll } from './utils/generateReport';
 
 const API_URL = 'http://localhost:8000';
@@ -29,11 +30,12 @@ function ViewModeControl({ viewMode, onViewModeChange, heatmapData, heatmapLoadi
   return (
     <div style={{
       display: 'flex',
-      background: 'rgba(26, 29, 39, 0.9)',
+      background: 'rgba(255,255,255,0.92)',
       backdropFilter: 'blur(24px)',
       borderRadius: 24,
       padding: 3,
-      border: '1px solid rgba(255,255,255,0.06)',
+      border: '1px solid rgba(0,0,0,0.08)',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
     }}>
       {modes.map((mode) => (
         <button
@@ -52,12 +54,12 @@ function ViewModeControl({ viewMode, onViewModeChange, heatmapData, heatmapLoadi
             alignItems: 'center',
             gap: 5,
             background: viewMode === mode.id
-              ? 'rgba(255,255,255,0.1)'
+              ? 'rgba(0,0,0,0.07)'
               : 'transparent',
             color: viewMode === mode.id
-              ? '#F1F5F9'
+              ? '#0F1117'
               : mode.disabled
-                ? '#374151'
+                ? '#CBD5E1'
                 : '#64748B',
           }}
         >
@@ -84,12 +86,13 @@ function WireframeToggle({ wireframe, onChange }) {
         gap: 6,
         padding: '6px 12px',
         borderRadius: 20,
-        border: '1px solid rgba(255,255,255,0.06)',
-        background: wireframe ? 'rgba(74, 158, 255, 0.1)' : 'rgba(26, 29, 39, 0.9)',
+        border: '1px solid rgba(0,0,0,0.08)',
+        background: wireframe ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.92)',
         backdropFilter: 'blur(24px)',
         cursor: 'pointer',
         fontSize: 11,
-        color: wireframe ? '#4A9EFF' : '#64748B',
+        color: wireframe ? '#dc2626' : '#64748B',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
         transition: 'all 0.2s ease',
       }}
     >
@@ -97,7 +100,7 @@ function WireframeToggle({ wireframe, onChange }) {
         width: 24,
         height: 14,
         borderRadius: 7,
-        background: wireframe ? '#4A9EFF' : '#374151',
+        background: wireframe ? '#dc2626' : '#CBD5E1',
         position: 'relative',
         transition: 'background 0.2s ease',
       }}>
@@ -166,6 +169,9 @@ function App() {
 
   // Export toast
   const [showExportToast, setShowExportToast] = useState(false);
+
+  // Landing page
+  const [showLanding, setShowLanding] = useState(false);
 
   const fileInputRef = useRef(null);
   const viewerRef = useRef(null);
@@ -351,7 +357,7 @@ function App() {
   return (
     <div
       className="h-screen w-screen overflow-hidden flex"
-      style={{ background: '#0F1117', color: '#F1F5F9', fontFamily: "'Inter', system-ui, sans-serif" }}
+      style={{ background: '#ffffff', color: '#0F1117', fontFamily: "'Inter', system-ui, sans-serif" }}
     >
       {/* Hidden file input */}
       <input
@@ -362,8 +368,9 @@ function App() {
         className="hidden"
       />
 
-      {/* LEFT TOOLBAR (56px) */}
+      {/* FLOATING TOOLBAR — fixed position, no layout impact */}
       <PACSToolbar
+        onLogoClick={() => setShowLanding(true)}
         onUpload={() => fileInputRef.current?.click()}
         isMeasuring={isMeasuring}
         onMeasuringChange={setIsMeasuring}
@@ -376,7 +383,25 @@ function App() {
         canExport={analysisStatus === 'success'}
       />
 
-      {/* MAIN CONTENT AREA */}
+      {/* LANDING PAGE MODAL */}
+      {showLanding && (
+        <LandingPage
+          onOpenApp={() => setShowLanding(false)}
+          onStartMesh={() => {
+            setShowLanding(false);
+            setUploadMode('mesh');
+            if (originalObjUrl) handleReset();
+            setTimeout(() => fileInputRef.current?.click(), 100);
+          }}
+          onStartDicom={() => {
+            setShowLanding(false);
+            setUploadMode('dicom');
+            if (originalObjUrl) handleReset();
+          }}
+        />
+      )}
+
+      {/* MAIN CONTENT AREA — full width, toolbar floats over it */}
       <div className="flex-1 relative flex flex-col" style={{ minWidth: 0 }}>
 
         {/* Mode toggle — visible when no mesh is loaded yet */}
@@ -384,11 +409,11 @@ function App() {
           <div
             className="absolute top-5 left-1/2 -translate-x-1/2 flex"
             style={{
-              background: 'rgba(26, 29, 39, 0.9)',
+              background: 'rgba(0, 0, 0, 0.05)',
               backdropFilter: 'blur(24px)',
               borderRadius: 24,
               padding: 3,
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: '1px solid rgba(0,0,0,0.08)',
               zIndex: 20,
             }}
           >
@@ -406,8 +431,8 @@ function App() {
                   fontWeight: 400,
                   border: 'none',
                   cursor: 'pointer',
-                  background: uploadMode === m.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  color: uploadMode === m.id ? '#F1F5F9' : '#64748B',
+                  background: uploadMode === m.id ? 'rgba(0,0,0,0.08)' : 'transparent',
+                  color: uploadMode === m.id ? '#0F1117' : '#64748B',
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -464,61 +489,130 @@ function App() {
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
-            className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 ${
-              dragActive ? 'ring-2 ring-inset ring-[#4A9EFF]' : ''
-            }`}
-            style={{ background: 'linear-gradient(135deg, #0F1117 0%, #141821 50%, #0F1117 100%)' }}
+            style={{
+              position: 'absolute', inset: 0,
+              background: '#FAFBFF',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              paddingLeft: 90, paddingRight: 24,
+            }}
           >
+            {/* Subtle grid texture */}
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              backgroundImage: 'radial-gradient(circle, rgba(220,38,38,0.04) 1px, transparent 1px)',
+              backgroundSize: '28px 28px',
+              zIndex: 0,
+            }} />
+
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center"
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              style={{ width: '100%', maxWidth: 520, position: 'relative', zIndex: 1 }}
             >
-              {/* Branding */}
-              <div className="flex items-center justify-center gap-4 mb-12">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, #4A9EFF, #3B82F6)', boxShadow: '0 8px 24px rgba(74, 158, 255, 0.2)' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                    <path d="M2 17l10 5 10-5" />
-                    <path d="M2 12l10 5 10-5" />
-                  </svg>
+              {/* Branding header */}
+              <div style={{ textAlign: 'center', marginBottom: 40 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <img src="/logoAneuX.png" alt="AneuXplain" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#000229', letterSpacing: '-0.02em', fontFamily: 'Syne, sans-serif' }}>
+                    AneuXplain
+                  </span>
                 </div>
-                <div className="text-left">
-                  <h1 style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.02em', color: '#F1F5F9' }}>AneuXplain</h1>
-                  <p style={{ fontSize: 12, color: '#64748B', fontWeight: 400, letterSpacing: '0.02em' }}>Explainable AI for Intracranial Aneurysm Rupture Risk Prediction</p>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#000229', letterSpacing: '-0.03em', lineHeight: 1.15, fontFamily: 'Syne, sans-serif', marginBottom: 10 }}>
+                  Upload Vessel Mesh
+                </div>
+                <div style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, maxWidth: 360, margin: '0 auto' }}>
+                  Load a 3D surface mesh of the aneurysm ROI for geometric analysis and rupture risk prediction.
                 </div>
               </div>
 
-              <div className="w-28 h-28 mx-auto mb-8 flex items-center justify-center"
-                style={{ background: 'rgba(26, 29, 39, 0.6)', borderRadius: 20, border: '1px dashed rgba(255,255,255,0.08)' }}>
-                <Upload style={{ width: 48, height: 48, color: '#374151' }} />
-              </div>
-              <h3 style={{ fontSize: 22, fontWeight: 300, color: '#F1F5F9', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                Drop ROI Mesh Here
-              </h3>
-              <p style={{ color: '#64748B', marginBottom: 36, maxWidth: 400, fontSize: 13, fontWeight: 400, lineHeight: 1.6 }}>
-                Cropped aneurysm region (.obj format) — drag and drop or click to browse
-              </p>
-              <button
+              {/* Drop zone card */}
+              <motion.div
+                animate={{
+                  borderColor: dragActive ? '#dc2626' : 'rgba(220,38,38,0.2)',
+                  background: dragActive ? 'rgba(220,38,38,0.03)' : '#ffffff',
+                  boxShadow: dragActive
+                    ? '0 0 0 4px rgba(220,38,38,0.08), 0 8px 32px rgba(220,38,38,0.06)'
+                    : '0 2px 16px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)',
+                }}
+                transition={{ duration: 0.18 }}
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2.5 mx-auto"
                 style={{
-                  padding: '12px 28px',
-                  background: 'linear-gradient(135deg, #4A9EFF, #3B82F6)',
-                  color: '#fff',
-                  fontWeight: 500,
-                  fontSize: 14,
-                  borderRadius: 10,
-                  border: 'none',
+                  border: '1.5px dashed rgba(220,38,38,0.2)',
+                  borderRadius: 24,
+                  padding: '48px 40px 44px',
+                  textAlign: 'center',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 16px rgba(74, 158, 255, 0.25)',
-                  transition: 'all 0.2s ease',
+                  marginBottom: 20,
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <Upload style={{ width: 18, height: 18 }} />
-                Select File
-              </button>
+                {/* Corner accents */}
+                <div style={{ position: 'absolute', top: 14, left: 14, width: 18, height: 18, borderTop: '2px solid #dc2626', borderLeft: '2px solid #dc2626', borderRadius: '4px 0 0 0', opacity: 0.4 }} />
+                <div style={{ position: 'absolute', top: 14, right: 14, width: 18, height: 18, borderTop: '2px solid #dc2626', borderRight: '2px solid #dc2626', borderRadius: '0 4px 0 0', opacity: 0.4 }} />
+                <div style={{ position: 'absolute', bottom: 14, left: 14, width: 18, height: 18, borderBottom: '2px solid #dc2626', borderLeft: '2px solid #dc2626', borderRadius: '0 0 0 4px', opacity: 0.4 }} />
+                <div style={{ position: 'absolute', bottom: 14, right: 14, width: 18, height: 18, borderBottom: '2px solid #dc2626', borderRight: '2px solid #dc2626', borderRadius: '0 0 4px 0', opacity: 0.4 }} />
+
+                {/* Upload icon */}
+                <motion.div
+                  animate={{ scale: dragActive ? 1.1 : 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  style={{
+                    width: 72, height: 72, borderRadius: '50%',
+                    background: dragActive ? 'rgba(220,38,38,0.12)' : 'rgba(220,38,38,0.06)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 24px',
+                    border: '1px solid rgba(220,38,38,0.15)',
+                  }}
+                >
+                  <Upload style={{ width: 28, height: 28, color: '#dc2626' }} />
+                </motion.div>
+
+                <div style={{ fontSize: 20, fontWeight: 700, color: '#000229', marginBottom: 8, letterSpacing: '-0.02em', fontFamily: 'Syne, sans-serif' }}>
+                  {dragActive ? 'Release to upload' : 'Drop your mesh file here'}
+                </div>
+                <div style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6 }}>
+                  or click anywhere to browse your files
+                </div>
+              </motion.div>
+
+              {/* Format badges + button row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {['.obj', '.ply', '.stl'].map((ext) => (
+                    <span key={ext} style={{
+                      fontSize: 11, fontWeight: 600, color: '#dc2626',
+                      background: 'rgba(220,38,38,0.06)', borderRadius: 6,
+                      padding: '4px 10px', fontFamily: 'ui-monospace, monospace',
+                      border: '1px solid rgba(220,38,38,0.15)',
+                      letterSpacing: '0.02em',
+                    }}>
+                      {ext}
+                    </span>
+                  ))}
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 24px',
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    fontWeight: 600, fontSize: 13,
+                    borderRadius: 10, border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(220,38,38,0.3)',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    fontFamily: 'Syne, sans-serif',
+                  }}
+                >
+                  <Upload style={{ width: 15, height: 15 }} />
+                  Select File
+                </button>
+              </div>
             </motion.div>
           </div>
         ) : (
@@ -543,46 +637,18 @@ function App() {
               <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-5"
                 style={{ height: 56, zIndex: 40 }}>
 
-                {/* Left: Patient name pill + reset view + close */}
+                {/* Left: Back to DICOM only — file/reset now live in the left floating column */}
                 <div className="flex items-center gap-2">
-                  <div
-                    className="flex items-center gap-2.5"
-                    style={{
-                      background: 'rgba(26, 29, 39, 0.9)',
-                      backdropFilter: 'blur(24px)',
-                      borderRadius: 20,
-                      padding: '6px 14px',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 400 }}>
-                      {file?.name?.replace('.obj', '') || 'Unknown'}
-                    </span>
-                    <button
-                      onClick={handleReset}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 0,
-                        display: 'flex',
-                        color: '#475569',
-                      }}
-                      title="Close scan"
-                    >
-                      <X style={{ width: 14, height: 14 }} />
-                    </button>
-                  </div>
-                  {/* Back to DICOM — only when analysis came from the DICOM flow */}
                   {dicomSessionId && (
                     <button
                       onClick={handleBackToDicom}
                       style={{
-                        background: 'rgba(26, 29, 39, 0.9)',
+                        background: 'rgba(255,255,255,0.92)',
                         backdropFilter: 'blur(24px)',
                         borderRadius: 20,
                         padding: '6px 12px',
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(0,0,0,0.08)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -600,30 +666,6 @@ function App() {
                       Back to DICOM
                     </button>
                   )}
-                  {/* Reset View button */}
-                  <button
-                    onClick={() => setResetViewKey(k => k + 1)}
-                    style={{
-                      background: 'rgba(26, 29, 39, 0.9)',
-                      backdropFilter: 'blur(24px)',
-                      borderRadius: 20,
-                      padding: '6px 10px',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      color: '#64748B',
-                      transition: 'color 0.2s ease',
-                    }}
-                    title="Reset view"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M15 3h6v6" />
-                      <path d="M9 21H3v-6" />
-                      <path d="M21 3l-7 7" />
-                      <path d="M3 21l7-7" />
-                    </svg>
-                  </button>
                 </div>
 
                 {/* Center: View mode segmented control */}
@@ -636,18 +678,8 @@ function App() {
                   />
                 )}
 
-                {/* Right: Wireframe toggle */}
-                {analysisStatus === 'success' && (viewMode === 'risk' || viewMode === 'measurements') && (
-                  <WireframeToggle
-                    wireframe={wireframeMode}
-                    onChange={setWireframeMode}
-                  />
-                )}
-
-                {/* Spacer when wireframe toggle is hidden */}
-                {!(analysisStatus === 'success' && (viewMode === 'risk' || viewMode === 'measurements')) && (
-                  <div style={{ width: 80 }} />
-                )}
+                {/* Right spacer */}
+                <div style={{ width: 80 }} />
               </div>
 
               {/* Status Indicators (measuring / clipping) */}
@@ -659,13 +691,53 @@ function App() {
                 <ClippingIndicator clippingY={clippingY} />
               </div>
 
-              {/* Risk Score Card — top-right floating */}
-              {viewMode === 'risk' && riskScore !== null && (
-                <div className="absolute top-16 right-5" style={{ zIndex: 30 }}>
-                  <RiskScoreCard
-                    riskScore={riskScore}
-                    riskLevel={riskLevel}
-                  />
+              {/* Left column: Risk card (risk view only) + controls row — shown on all analysis views */}
+              {analysisStatus === 'success' && (
+                <div style={{ position: 'absolute', top: 8, left: 80, zIndex: 30, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Risk card — only on risk view */}
+                  {viewMode === 'risk' && riskScore !== null && (
+                    <RiskScoreCard riskScore={riskScore} riskLevel={riskLevel} />
+                  )}
+
+                  {/* Controls row — file name · wireframe · reset view */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {/* File name + close */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(24px)',
+                      WebkitBackdropFilter: 'blur(24px)', borderRadius: 20,
+                      padding: '6px 12px', border: '1px solid rgba(0,0,0,0.08)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    }}>
+                      <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 400, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {file?.name?.replace('.obj', '') || 'Unknown'}
+                      </span>
+                      <button onClick={handleReset} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#475569' }} title="Close scan">
+                        <X style={{ width: 13, height: 13 }} />
+                      </button>
+                    </div>
+
+                    {/* Wireframe toggle */}
+                    <WireframeToggle wireframe={wireframeMode} onChange={setWireframeMode} />
+
+                    {/* Reset view */}
+                    <button
+                      onClick={() => setResetViewKey(k => k + 1)}
+                      style={{
+                        background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)', borderRadius: 20,
+                        padding: '6px 10px', border: '1px solid rgba(0,0,0,0.08)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748B',
+                      }}
+                      title="Reset view"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 3h6v6" /><path d="M9 21H3v-6" />
+                        <path d="M21 3l-7 7" /><path d="M3 21l7-7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -677,10 +749,10 @@ function App() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                    style={{ background: 'rgba(15, 17, 23, 0.88)', backdropFilter: 'blur(4px)', zIndex: 50 }}
+                    style={{ background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(4px)', zIndex: 50 }}
                   >
                     <div className="text-center">
-                      <Loader2 style={{ width: 40, height: 40, color: '#4A9EFF', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
+                      <Loader2 style={{ width: 40, height: 40, color: '#dc2626', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
                       <p style={{ color: '#64748B', fontSize: 12, fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         Analyzing morphology...
                       </p>
@@ -737,58 +809,45 @@ function App() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* FLOATING MORPHOLOGY PANEL — right side, overlays the 3D scene */}
+              <AnimatePresence>
+                {((originalObjUrl || dicomAnalysis) && (analysisStatus === 'loading' || clinicalReport)) && (
+                  <div style={{ position: 'absolute', top: 8, right: 20, zIndex: 30, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {dicomAnalysis && (
+                      <div
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-end',
+                          background: dicomAnalysis.harmonization?.all_in_distribution
+                            ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.88)',
+                          backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                          border: `1px solid ${dicomAnalysis.harmonization?.all_in_distribution ? 'rgba(52,211,153,0.4)' : 'rgba(234,179,8,0.4)'}`,
+                          borderRadius: 20, padding: '5px 12px',
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                          fontSize: 10, fontWeight: 500,
+                          color: dicomAnalysis.harmonization?.all_in_distribution ? '#059669' : '#b45309',
+                        }}
+                        title="Input quality vs. training distribution"
+                      >
+                        {dicomAnalysis.harmonization?.all_in_distribution ? (
+                          <><CheckCircle style={{ width: 11, height: 11 }} /> In distribution</>
+                        ) : (
+                          <><AlertTriangle style={{ width: 11, height: 11 }} /> Out of distribution</>
+                        )}
+                      </div>
+                    )}
+                    <MorphologyReport
+                      clinicalReport={clinicalReport}
+                      onParameterSelect={handleParameterSelect}
+                      isLoading={analysisStatus === 'loading'}
+                    />
+                  </div>
+                )}
+              </AnimatePresence>
             </div>
           </>
         )}
       </div>
-
-      {/* RIGHT PANEL — Morphology Report (slides in after analysis) */}
-      <AnimatePresence>
-        {(originalObjUrl && (analysisStatus === 'loading' || clinicalReport)) ||
-        (dicomAnalysis && clinicalReport) ? (
-          <div className="relative">
-            {dicomAnalysis && (
-              <div
-                className="absolute top-3 right-3 flex items-center gap-1.5"
-                style={{
-                  background: dicomAnalysis.harmonization?.all_in_distribution
-                    ? 'rgba(5, 150, 105, 0.15)'
-                    : 'rgba(234, 179, 8, 0.15)',
-                  border: `1px solid ${
-                    dicomAnalysis.harmonization?.all_in_distribution
-                      ? 'rgba(5, 150, 105, 0.4)'
-                      : 'rgba(234, 179, 8, 0.4)'
-                  }`,
-                  borderRadius: 14,
-                  padding: '4px 10px',
-                  zIndex: 50,
-                  fontSize: 10,
-                  fontWeight: 500,
-                  color: dicomAnalysis.harmonization?.all_in_distribution ? '#34d399' : '#facc15',
-                }}
-                title="Input quality vs. training distribution"
-              >
-                {dicomAnalysis.harmonization?.all_in_distribution ? (
-                  <>
-                    <CheckCircle style={{ width: 11, height: 11 }} />
-                    In distribution
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle style={{ width: 11, height: 11 }} />
-                    Out of distribution
-                  </>
-                )}
-              </div>
-            )}
-            <MorphologyReport
-              clinicalReport={clinicalReport}
-              onParameterSelect={handleParameterSelect}
-              isLoading={analysisStatus === 'loading'}
-            />
-          </div>
-        ) : null}
-      </AnimatePresence>
     </div>
   );
 }
