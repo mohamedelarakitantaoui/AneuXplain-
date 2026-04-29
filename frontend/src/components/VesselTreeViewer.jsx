@@ -61,7 +61,7 @@ function VesselMesh({ url, onReady, onClickDisplay }) {
     obj.traverse((child) => {
       if (child.isMesh) {
         child.material = new THREE.MeshStandardMaterial({
-          color: '#67B8D6',
+          color: '#7FB3C9',
           roughness: 0.4,
           metalness: 0.1,
         });
@@ -135,7 +135,7 @@ export default function VesselTreeViewer({ apiUrl, sessionId, onCropPointSelecte
         <ambientLight intensity={0.6} />
         <directionalLight position={[10, 10, 5]} intensity={0.9} castShadow />
         <directionalLight position={[-5, 5, -5]} intensity={0.3} />
-        <pointLight position={[0, 5, 0]} intensity={0.15} color="#4A9EFF" />
+        <pointLight position={[0, 5, 0]} intensity={0.15} color="#ffffff" />
 
         <Grid
           position={[0, -1.5, 0]}

@@ -171,7 +171,7 @@ function App() {
   const [showExportToast, setShowExportToast] = useState(false);
 
   // Landing page
-  const [showLanding, setShowLanding] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
 
   const fileInputRef = useRef(null);
   const viewerRef = useRef(null);

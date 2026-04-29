@@ -170,26 +170,50 @@ class CounterfactualEngine:
     
     def _load_mesh_as_points(self, file_path: str) -> np.ndarray:
         """
-        Load a mesh file and sample points from its surface.
-        
-        Args:
-            file_path: Path to the mesh file (.obj, .ply, .stl, etc.)
-            
+        Load a mesh file and deterministically select num_points surface points.
+
+        Uses dense seeded sampling followed by Farthest Point Sampling (FPS)
+        so the same mesh always yields the same point cloud → reproducible
+        risk scores across repeated /analyze calls.
+
         Returns:
-            Point cloud as numpy array of shape (N, 3), normalized to unit sphere
+            Point cloud as numpy array of shape (num_points, 3), normalized to unit sphere
         """
         mesh = trimesh.load(file_path, force='mesh')
-        result = trimesh.sample.sample_surface(mesh, count=self.num_points)
-        points = np.array(result[0], dtype=np.float32)
-        
+
+        # Dense oversample with a fixed seed (4x target), then FPS-downsample.
+        # Oversampling ensures uniform surface coverage even on meshes with
+        # uneven triangle areas; FPS guarantees deterministic, uniform spread.
+        oversample = max(self.num_points * 4, 8192)
+        result = trimesh.sample.sample_surface(mesh, count=oversample, seed=42)
+        dense = np.array(result[0], dtype=np.float32)
+
+        points = self._farthest_point_sample(dense, self.num_points)
+
         # Normalize to unit sphere
         centroid = np.mean(points, axis=0)
         points = points - centroid
         max_dist = np.max(np.linalg.norm(points, axis=1))
         if max_dist > 0:
             points = points / max_dist
-        
+
         return points
+
+    @staticmethod
+    def _farthest_point_sample(points: np.ndarray, k: int) -> np.ndarray:
+        """Deterministic Farthest Point Sampling: pick k points with max spatial spread."""
+        n = len(points)
+        if n <= k:
+            return points
+        selected = np.empty(k, dtype=np.int64)
+        selected[0] = 0  # deterministic seed (index 0 of the seeded oversample)
+        dists = np.full(n, np.inf, dtype=np.float32)
+        for i in range(1, k):
+            last = points[selected[i - 1]]
+            d = np.sum((points - last) ** 2, axis=1)
+            dists = np.minimum(dists, d)
+            selected[i] = int(np.argmax(dists))
+        return points[selected]
     
     def _points_to_tensor(self, points: np.ndarray) -> torch.Tensor:
         """

@@ -935,7 +935,7 @@ const ArteryViewer = forwardRef(function ArteryViewer({
           >
             <ClickableModel
               url={originalObjUrl}
-              color="#67B8D6"
+              color="#7FB3C9"
               opacity={activeHighlight ? 0.25 : 1.0}
               wireframe={isWireframe}
               visible={showClickable}
